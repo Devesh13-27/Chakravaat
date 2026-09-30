@@ -82,6 +82,13 @@ const App = (() => {
   }
 
   /* ── Nav view switch ─────────────────────────────────────── */
+  const TAB_FOR_VIEW = {
+    live:     'intel',
+    predict:  'forecast',
+    replay:   'intel',
+    analysis: 'xai'
+  };
+
   function onNavChange(view) {
     const labels = {
       live:     'Live Monitor active',
@@ -91,12 +98,13 @@ const App = (() => {
     };
     UI.toast(labels[view] || view);
 
-    /* Future: swap visible content panels per view */
+    const tab = TAB_FOR_VIEW[view];
+    if (tab) UI.activateTab(tab);
   }
 
   /* ── Map zoom ────────────────────────────────────────────── */
-  function onZoomIn()    { UI.toast(`Zoom: ${Math.round(ChakravaatMap.zoom(1)  * 100)}%`); }
-  function onZoomOut()   { UI.toast(`Zoom: ${Math.round(ChakravaatMap.zoom(-1) * 100)}%`); }
+  function onZoomIn()    { UI.toast(`Zoom level: ${ChakravaatMap.zoom(1)}`); }
+  function onZoomOut()   { UI.toast(`Zoom level: ${ChakravaatMap.zoom(-1)}`); }
   function onZoomReset() { ChakravaatMap.resetZoom(); UI.toast('View reset'); }
 
   /* ── Timeline tick ───────────────────────────────────────── */
@@ -114,20 +122,25 @@ const App = (() => {
   }
 
   /* ── Bootstrap ───────────────────────────────────────────── */
-  function init() {
-    /* Clock */
-    UI.startClock();
-
-    /* Render map */
-    ChakravaatMap.renderMap(window.STORM_DATA);
+  async function init() {
+    /* Render map (awaited so overlays exist before we sync layer visibility) */
+    await ChakravaatMap.renderMap(window.STORM_DATA);
 
     /* Default active storm = first in list */
     _activeStormId = window.STORM_DATA[0]?.id || null;
+
+    /* Top alert badge (reflects whole fleet, not just selection) */
+    UI.updateAlertBadge(window.STORM_DATA);
 
     /* Left panel */
     UI.renderStormCards(window.STORM_DATA, _activeStormId, selectStorm);
     UI.renderSatFeeds(window.SAT_FEEDS, _activeSatIdx, selectSat);
     UI.renderLayerToggles(window.MAP_LAYERS, onLayerToggle);
+
+    /* Sync map overlay visibility with each layer's default on/off state */
+    (window.MAP_LAYERS || []).forEach(layer => {
+      ChakravaatMap.setLayerVisible(layer.id, Boolean(layer.on));
+    });
 
     /* Right panel initial state */
     const storm = getActiveStorm();

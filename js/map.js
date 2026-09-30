@@ -22,7 +22,11 @@ const ChakravaatMap = (() => {
     predicted: [],
     uncertainty: [],
     current: [],
-    landfall: []
+    landfall: [],
+    sst: [],
+    shear: [],
+    cloud: [],
+    pressure: []
   };
 
   let currentStormOverlays = [];
@@ -369,189 +373,369 @@ async function initMap() {
     pulseAnimationIds = [];
   }
 
-  // -------------------------------------------------------
-  // Current Cyclone Marker
-  // -------------------------------------------------------
+ // =========================================================
+// CHAKRAVAAT — CYCLONE UI
+// =========================================================
 
-  function createCycloneIcon(color = "#22D3EE") {
+function getCycloneColor(storm = {}) {
 
-    const svg = `
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="72"
-        height="72"
-        viewBox="0 0 72 72"
-      >
+  // IMD codes (see README classification table) are the
+  // authoritative source — categoryLabel is often just the
+  // same abbreviation ("VSCS") so text matching on it alone
+  // would silently fall through to the default color.
+  const code = String(
+    storm.category || ""
+  ).toLowerCase().trim();
 
-        <defs>
+  const byCode = {
+    escs: "#F43F5E",
+    vscs: "#FB7185",
+    scs:  "#FBBF24",
+    cs:   "#2DD4BF",
+    dd:   "#38BDF8",
+    d:    "#22D3EE"
+  };
 
-          <radialGradient id="glow">
-            <stop
-              offset="0%"
-              stop-color="${color}"
-              stop-opacity="0.95"
-            />
-
-            <stop
-              offset="45%"
-              stop-color="${color}"
-              stop-opacity="0.25"
-            />
-
-            <stop
-              offset="100%"
-              stop-color="${color}"
-              stop-opacity="0"
-            />
-          </radialGradient>
-
-        </defs>
-
-        <circle
-          cx="36"
-          cy="36"
-          r="34"
-          fill="url(#glow)"
-        />
-
-        <circle
-          cx="36"
-          cy="36"
-          r="18"
-          fill="#07111F"
-          stroke="${color}"
-          stroke-width="2.5"
-        />
-
-        <circle
-          cx="36"
-          cy="36"
-          r="8"
-          fill="${color}"
-          opacity="0.95"
-        />
-
-        <circle
-          cx="36"
-          cy="36"
-          r="4"
-          fill="#FFFFFF"
-        />
-
-        <path
-          d="
-            M36 4
-            C49 13 57 22 58 36
-            C57 50 49 59 36 68
-            C45 55 49 46 49 36
-            C49 25 45 16 36 4
-          "
-          fill="none"
-          stroke="${color}"
-          stroke-width="1"
-          opacity="0.55"
-        />
-
-      </svg>
-    `;
-
-    return {
-      url:
-        "data:image/svg+xml;charset=UTF-8," +
-        encodeURIComponent(svg),
-
-      scaledSize:
-        new google.maps.Size(72, 72),
-
-      anchor:
-        new google.maps.Point(36, 36)
-    };
+  if (byCode[code]) {
+    return byCode[code];
   }
 
-  // -------------------------------------------------------
-  // Pulse Animation
-  // -------------------------------------------------------
+  const label = String(
+    storm.categoryLabel || ""
+  ).toLowerCase();
 
-  function createPulse(position, color) {
+  if (
+    label.includes("extremely severe") ||
+    label.includes("super")
+  ) {
+    return "#F43F5E";
+  }
 
-    const pulse = new google.maps.Circle({
+  if (
+    label.includes("very severe")
+  ) {
+    return "#FB7185";
+  }
 
-      map: mapInstance,
+  if (
+    label.includes("severe")
+  ) {
+    return "#FBBF24";
+  }
 
-      center: position,
+  if (
+    label.includes("cyclonic")
+  ) {
+    return "#2DD4BF";
+  }
 
-      radius: 25000,
+  if (
+    label.includes("deep")
+  ) {
+    return "#38BDF8";
+  }
 
-      strokeColor: color,
+  return "#22D3EE";
+}
 
-      strokeOpacity: 0.35,
 
-      strokeWeight: 1.5,
+// ---------------------------------------------------------
+// Premium cyclone SVG
+// ---------------------------------------------------------
 
-      fillColor: color,
+function createCycloneIcon(storm = {}) {
 
-      fillOpacity: 0.06,
+  const color = getCycloneColor(storm);
 
-      clickable: false
-    });
+  const svg = `
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="96"
+      height="96"
+      viewBox="0 0 96 96"
+    >
 
-    addOverlay("current", pulse);
+      <defs>
 
-    let start = performance.now();
+        <filter
+          id="glow"
+          x="-100%"
+          y="-100%"
+          width="300%"
+          height="300%"
+        >
+          <feGaussianBlur
+            stdDeviation="3"
+            result="blur"
+          />
 
-    function animate(now) {
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
 
-      if (!mapInstance) return;
+        <radialGradient
+          id="core"
+          cx="50%"
+          cy="50%"
+          r="50%"
+        >
+          <stop
+            offset="0%"
+            stop-color="#FFFFFF"
+          />
 
-      const elapsed =
-        (now - start) % 2200;
+          <stop
+            offset="25%"
+            stop-color="${color}"
+          />
 
-      const progress =
-        elapsed / 2200;
+          <stop
+            offset="100%"
+            stop-color="${color}"
+            stop-opacity="0.05"
+          />
+        </radialGradient>
 
-      const radius =
-        20000 + progress * 70000;
+      </defs>
 
-      const opacity =
-        0.35 * (1 - progress);
 
-      pulse.setRadius(radius);
+      <!-- outer atmospheric rings -->
 
-      pulse.setOptions({
-        strokeOpacity: opacity,
-        fillOpacity: opacity * 0.18
-      });
+      <circle
+        cx="48"
+        cy="48"
+        r="38"
+        fill="none"
+        stroke="${color}"
+        stroke-width="1"
+        opacity="0.18"
+      />
 
-      const id =
-        requestAnimationFrame(animate);
+      <circle
+        cx="48"
+        cy="48"
+        r="31"
+        fill="none"
+        stroke="${color}"
+        stroke-width="1"
+        stroke-dasharray="3 5"
+        opacity="0.35"
+      />
 
-      pulseAnimationIds.push(id);
+      <circle
+        cx="48"
+        cy="48"
+        r="24"
+        fill="none"
+        stroke="${color}"
+        stroke-width="1.5"
+        opacity="0.65"
+      />
+
+
+      <!-- cyclone spiral -->
+
+      <path
+        d="
+          M48 48
+          C48 36 62 32 69 40
+          C77 49 69 64 56 67
+          C38 72 24 60 26 44
+          C28 27 44 18 59 23
+          C75 28 82 45 76 59
+        "
+        fill="none"
+        stroke="${color}"
+        stroke-width="4"
+        stroke-linecap="round"
+        opacity="0.9"
+        filter="url(#glow)"
+      />
+
+      <path
+        d="
+          M48 48
+          C48 41 55 38 60 42
+          C66 47 62 56 55 58
+          C45 61 37 54 38 46
+          C39 38 47 33 55 35
+        "
+        fill="none"
+        stroke="#FFFFFF"
+        stroke-width="2"
+        stroke-linecap="round"
+        opacity="0.9"
+      />
+
+
+      <!-- eye -->
+
+      <circle
+        cx="48"
+        cy="48"
+        r="9"
+        fill="url(#core)"
+        filter="url(#glow)"
+      />
+
+      <circle
+        cx="48"
+        cy="48"
+        r="3.5"
+        fill="#FFFFFF"
+      />
+
+      <circle
+        cx="48"
+        cy="48"
+        r="1.5"
+        fill="${color}"
+      />
+
+    </svg>
+  `;
+
+  return {
+    url:
+      "data:image/svg+xml;charset=UTF-8," +
+      encodeURIComponent(svg),
+
+    scaledSize:
+      new google.maps.Size(96, 96),
+
+    anchor:
+      new google.maps.Point(48, 48)
+  };
+}
+
+
+// ---------------------------------------------------------
+// Animated cyclone pulse
+// ---------------------------------------------------------
+
+function createCyclonePulse(
+  position,
+  color
+) {
+
+  const pulse = new google.maps.Circle({
+
+    map: mapInstance,
+
+    center: position,
+
+    radius: 12000,
+
+    strokeColor: color,
+
+    strokeOpacity: 0.45,
+
+    strokeWeight: 1,
+
+    fillColor: color,
+
+    fillOpacity: 0.035,
+
+    clickable: false,
+
+    zIndex: 90
+
+  });
+
+  addOverlay(
+    "current",
+    pulse
+  );
+
+  let radius = 12000;
+  let opacity = 0.45;
+
+  const animate = () => {
+
+    radius += 5000;
+
+    opacity -= 0.012;
+
+    if (
+      radius > 75000 ||
+      opacity <= 0
+    ) {
+
+      radius = 12000;
+      opacity = 0.45;
+
     }
 
-    const firstId =
+    pulse.setRadius(radius);
+
+    pulse.setOptions({
+      strokeOpacity: opacity,
+      fillOpacity: opacity * 0.08
+    });
+
+    const id =
       requestAnimationFrame(animate);
 
-    pulseAnimationIds.push(firstId);
-  }
+    pulseAnimationIds.push(id);
 
-  // -------------------------------------------------------
-  // Wind / Intensity Rings
-  // -------------------------------------------------------
+  };
 
-  function createWindRings(position, warning = false) {
+  animate();
+}
 
-    const color =
-      warning
-        ? "#F87171"
-        : "#22D3EE";
 
-    const radii = [
-      45000,
-      90000,
-      150000
-    ];
+// ---------------------------------------------------------
+// Intensity / wind rings
+// ---------------------------------------------------------
 
-    radii.forEach((radius, index) => {
+function createIntensityRings(
+  position,
+  storm = {}
+) {
+
+  const wind = Number(
+    storm.windSpeed ||
+    storm.wind ||
+    storm.maxWind ||
+    0
+  );
+
+  const color =
+    getCycloneColor(storm);
+
+  const rings = [
+    {
+      radius: Math.max(
+        30000,
+        wind * 500
+      ),
+      opacity: 0.08,
+      weight: 1
+    },
+
+    {
+      radius: Math.max(
+        18000,
+        wind * 300
+      ),
+      opacity: 0.12,
+      weight: 1
+    },
+
+    {
+      radius: Math.max(
+        8000,
+        wind * 140
+      ),
+      opacity: 0.20,
+      weight: 1.5
+    }
+  ];
+
+  rings.forEach(
+    ring => {
 
       const circle =
         new google.maps.Circle({
@@ -560,23 +744,159 @@ async function initMap() {
 
           center: position,
 
-          radius,
+          radius: ring.radius,
 
           strokeColor: color,
 
           strokeOpacity:
-            0.28 - index * 0.06,
+            ring.opacity * 2,
 
-          strokeWeight: 1,
+          strokeWeight:
+            ring.weight,
 
-          fillOpacity: 0,
+          fillColor: color,
 
-          clickable: false
+          fillOpacity:
+            ring.opacity,
+
+          clickable: false,
+
+          zIndex: 50
+
         });
 
-      addOverlay("current", circle);
+      addOverlay(
+        "current",
+        circle
+      );
+
+    }
+  );
+}
+
+
+// ---------------------------------------------------------
+// Illustrative environment layers
+// (Sea Surface Temp / Wind Shear / Cloud Top Temp / Pressure)
+// These are frontend-only visual placeholders derived from
+// existing storm fields, not real satellite/reanalysis data.
+// Replace with real overlays once ENV_DATA has geospatial
+// fields to back them.
+// ---------------------------------------------------------
+
+const COMPASS_BEARINGS = {
+  N: 0, NNE: 22.5, NE: 45, ENE: 67.5,
+  E: 90, ESE: 112.5, SE: 135, SSE: 157.5,
+  S: 180, SSW: 202.5, SW: 225, WSW: 247.5,
+  W: 270, WNW: 292.5, NW: 315, NNW: 337.5
+};
+
+function createSSTOverlay(position, storm = {}) {
+
+  const color = "#2A9D8F"; // --teal
+
+  const circle = new google.maps.Circle({
+    map: mapInstance,
+    center: position,
+    radius: 160000,
+    strokeColor: color,
+    strokeOpacity: 0.25,
+    strokeWeight: 1,
+    fillColor: color,
+    fillOpacity: 0.06,
+    clickable: false,
+    zIndex: 20
+  });
+
+  addOverlay("sst", circle);
+}
+
+function createShearIndicator(position, storm = {}) {
+
+  const color = "#F4A261"; // --amber
+
+  const bearing =
+    COMPASS_BEARINGS[String(storm.direction || "").toUpperCase()] ?? 45;
+
+  const tip = google.maps.geometry.spherical.computeOffset(
+    position,
+    90000,
+    bearing
+  );
+
+  const arrow = new google.maps.Polyline({
+    map: mapInstance,
+    path: [position, tip],
+    strokeColor: color,
+    strokeOpacity: 0.85,
+    strokeWeight: 2,
+    icons: [{
+      icon: {
+        path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+        scale: 2.5,
+        strokeColor: color,
+        fillColor: color,
+        fillOpacity: 1
+      },
+      offset: "100%"
+    }],
+    clickable: false,
+    zIndex: 55
+  });
+
+  addOverlay("shear", arrow);
+}
+
+function createCloudTopOverlay(position, storm = {}) {
+
+  const color = "#9B59B6";
+
+  const wind = Number(storm.windSpeed || storm.wind || storm.maxWind || 0);
+  const radius = Math.max(45000, wind * 550);
+
+  const circle = new google.maps.Circle({
+    map: mapInstance,
+    center: position,
+    radius,
+    strokeColor: color,
+    strokeOpacity: 0.4,
+    strokeWeight: 1,
+    fillColor: color,
+    fillOpacity: 0.05,
+    clickable: false,
+    zIndex: 15
+  });
+
+  addOverlay("cloud", circle);
+}
+
+function createPressureContours(position, storm = {}) {
+
+  const color = "#2C5282"; // --navy-mid
+
+  const pressure = Number(storm.pressure) || 1004;
+  // Lower central pressure → steeper gradient → tighter, denser isobars.
+  const gradient = Math.max(0.4, Math.min(1.4, (1010 - pressure) / 40));
+  const ringCount = 4;
+
+  for (let i = 1; i <= ringCount; i++) {
+
+    const circle = new google.maps.Circle({
+      map: mapInstance,
+      center: position,
+      radius: i * 55000 * gradient,
+      strokeColor: color,
+      strokeOpacity: 0.35,
+      strokeWeight: 1,
+      fillColor: "transparent",
+      fillOpacity: 0,
+      clickable: false,
+      zIndex: 10
     });
+
+    addOverlay("pressure", circle);
   }
+}
 
   // -------------------------------------------------------
   // Track Rendering
@@ -646,13 +966,8 @@ async function initMap() {
       return;
     }
 
-    const warning =
-      Boolean(storm.isWarning);
-
     const currentColor =
-      warning
-        ? "#F87171"
-        : "#22D3EE";
+      getCycloneColor(storm);
 
     const marker =
       new google.maps.Marker({
@@ -667,7 +982,7 @@ async function initMap() {
 
         icon:
           createCycloneIcon(
-            currentColor
+            storm
           ),
 
         zIndex: 1000
@@ -721,15 +1036,20 @@ async function initMap() {
       );
     }
 
-    createPulse(
+    createCyclonePulse(
       current,
       currentColor
     );
 
-    createWindRings(
+    createIntensityRings(
       current,
-      warning
+      storm
     );
+
+    createSSTOverlay(current, storm);
+    createShearIndicator(current, storm);
+    createCloudTopOverlay(current, storm);
+    createPressureContours(current, storm);
 
     // -------------------------------
     // Forecast Track
@@ -755,9 +1075,7 @@ async function initMap() {
           geodesic: true,
 
           strokeColor:
-            warning
-              ? "#F87171"
-              : "#22D3EE",
+            currentColor,
 
           strokeOpacity: 0.95,
 
@@ -800,9 +1118,7 @@ async function initMap() {
             scale: 4,
 
             fillColor:
-              warning
-                ? "#F87171"
-                : "#22D3EE",
+              currentColor,
 
             fillOpacity: 1,
 
@@ -839,9 +1155,7 @@ async function initMap() {
               text: String(wp.label),
 
               color:
-                warning
-                  ? "#FCA5A5"
-                  : "#7DD3FC",
+                currentColor,
 
               fontSize: "10px",
 
@@ -895,18 +1209,14 @@ async function initMap() {
             paths: corridor,
 
             strokeColor:
-              warning
-                ? "#F87171"
-                : "#22D3EE",
+              currentColor,
 
             strokeOpacity: 0.35,
 
             strokeWeight: 1,
 
             fillColor:
-              warning
-                ? "#F87171"
-                : "#22D3EE",
+              currentColor,
 
             fillOpacity: 0.09,
 
@@ -1363,6 +1673,27 @@ async function initMap() {
       normalized.includes("storm")
     ) {
       target = "current";
+
+    } else if (
+      normalized.includes("sst") ||
+      normalized.includes("sea surface")
+    ) {
+      target = "sst";
+
+    } else if (
+      normalized.includes("shear")
+    ) {
+      target = "shear";
+
+    } else if (
+      normalized.includes("cloud")
+    ) {
+      target = "cloud";
+
+    } else if (
+      normalized.includes("pressure")
+    ) {
+      target = "pressure";
     }
 
     if (!target) return;
@@ -1407,15 +1738,20 @@ async function initMap() {
         ? currentZoom + 1
         : currentZoom - 1;
 
-    mapInstance.setZoom(
+    const clampedZoom =
       Math.max(
         3,
         Math.min(
           10,
           newZoom
         )
-      )
+      );
+
+    mapInstance.setZoom(
+      clampedZoom
     );
+
+    return clampedZoom;
   }
 
   function resetZoom() {

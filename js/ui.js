@@ -26,17 +26,24 @@ const UI = (() => {
   }
 
   /* ══════════════════════════════════════════════════════════
-     CLOCK
+     TOP ALERT BADGE
      ══════════════════════════════════════════════════════════ */
-  function startClock() {
-    function tick() {
-      const now = new Date();
-      const pad = n => String(n).padStart(2, '0');
-      const el  = $('clock');
-      if (el) el.textContent = `UTC ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
+
+  /* Reflects the most severe active warning across all systems
+     (independent of which storm is selected in the left panel). */
+  function updateAlertBadge(storms) {
+    const badge = $('alertBadge');
+    if (!badge) return;
+
+    const warning = (storms || []).find(s => s.isWarning);
+
+    if (warning) {
+      badge.textContent = `⚠ ${warning.categoryLabel} ACTIVE`;
+      badge.classList.remove('calm');
+    } else {
+      badge.textContent = 'NO ACTIVE WARNINGS';
+      badge.classList.add('calm');
     }
-    tick();
-    setInterval(tick, 1000);
   }
 
   /* ══════════════════════════════════════════════════════════
@@ -343,13 +350,14 @@ const UI = (() => {
      TAB SWITCHING
      ══════════════════════════════════════════════════════════ */
 
+  function activateTab(name) {
+    document.querySelectorAll('.r-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === `pane-${name}`));
+  }
+
   function initTabs() {
     document.querySelectorAll('.r-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const name = tab.dataset.tab;
-        document.querySelectorAll('.r-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-        document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === `pane-${name}`));
-      });
+      tab.addEventListener('click', () => activateTab(tab.dataset.tab));
     });
   }
 
@@ -370,7 +378,7 @@ const UI = (() => {
   /* ── Public API ── */
   return {
     toast,
-    startClock,
+    updateAlertBadge,
     renderStormCards,
     renderSatFeeds,
     renderLayerToggles,
@@ -386,6 +394,7 @@ const UI = (() => {
     renderERA5,
     renderDataSources,
     initTabs,
+    activateTab,
     initNavPills
   };
 })();
