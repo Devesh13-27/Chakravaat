@@ -1,0 +1,100 @@
+/* ============================================================
+   base.css — Reset, typography baseline, global utilities
+   ============================================================ */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Layout shell ── */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Utility: monospace numeric / coordinate text ── */
+.mono {
+  font-family: 'Fira Code', monospace;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar        { width: 4px; }
+::-webkit-scrollbar-track  { background: transparent; }
+::-webkit-scrollbar-thumb  { background: var(--border-strong); border-radius: 3px; }
+* { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: calc(var(--replay-bar-h) + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--navy);
+  color: #E8F4FF;
+  padding: 7px 16px;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(30,58,95,0.3);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Disclaimer box ── */
+.disclaimer-box {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-top: 9px;
+  line-height: 1.6;
+  background: var(--surface-2);
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+/* ── XAI caption ── */
+.xai-caption {
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 13px;
+  background: var(--blue-light);
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(0,119,182,0.15);
+}
+
+/* ── Animations ── */
+@keyframes logo-spin   { to { transform: rotate(360deg); } }
+@keyframes dot-pulse   { 0%,100%{ opacity:1 } 50%{ opacity:0.35 } }
+@keyframes badge-glow  {
+  0%,100%{ box-shadow: 0 0 0 0 rgba(230,57,70,0.4); }
+  50%    { box-shadow: 0 0 0 4px rgba(230,57,70,0); }
+}
+@keyframes cld-anim    { from{ filter:brightness(0.88) } to{ filter:brightness(1.12) } }

@@ -1,0 +1,186 @@
+/* ============================================================
+   left-panel.css — Storm list, satellite feeds, layer toggles
+   ============================================================ */
+
+.left-panel {
+  width: var(--left-panel-w);
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.panel-sec {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.panel-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin-bottom: 9px;
+  text-transform: uppercase;
+}
+
+/* ── Storm cards ── */
+.storm-card {
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 11px;
+  margin-bottom: 7px;
+  cursor: pointer;
+  background: var(--surface-2);
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.storm-card:last-child { margin-bottom: 0; }
+.storm-card:hover    { border-color: var(--blue-mid); box-shadow: var(--shadow-sm); }
+.storm-card.selected { border-color: var(--blue); background: var(--blue-light); box-shadow: 0 0 0 3px rgba(0,119,182,0.1); }
+
+/* Severity-specific overrides */
+.storm-card.warn-card                { border-color: rgba(230,57,70,0.3); }
+.storm-card.warn-card:hover          { border-color: var(--red); }
+.storm-card.warn-card.selected       { border-color: var(--red); background: var(--red-light); box-shadow: 0 0 0 3px rgba(230,57,70,0.1); }
+
+.storm-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+.storm-name {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.storm-cat {
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+.storm-cat.vscs  { background: rgba(230,57,70,0.12); color: var(--red); }
+.storm-cat.dd    { background: rgba(244,162,97,0.15); color: #C06010; }
+.storm-cat.cs    { background: rgba(0,119,182,0.10); color: var(--blue); }
+.storm-cat.escs  { background: rgba(230,57,70,0.18); color: var(--red); }
+.storm-cat.scs   { background: rgba(244,162,97,0.20); color: #B05000; }
+
+.storm-coords {
+  font-size: 11px;
+  font-family: 'Fira Code', monospace;
+  color: var(--text-secondary);
+  margin-bottom: 5px;
+}
+
+.storm-meta {
+  display: flex;
+  gap: 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.storm-meta strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.intensity-strip {
+  display: flex;
+  gap: 3px;
+  margin-top: 7px;
+}
+.strip-seg {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.strip-seg.active-vscs { background: var(--red); }
+.strip-seg.active-dd   { background: var(--amber); }
+.strip-seg.active-cs   { background: var(--blue); }
+
+/* ── Satellite feeds ── */
+.sat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.sat-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 9px;
+  background: var(--surface-2);
+  border-radius: 6px;
+  font-size: 11px;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sat-item:hover        { border-color: var(--border-strong); background: var(--surface); }
+.sat-item.active       { border-color: var(--blue); background: var(--blue-light); }
+
+.sat-item-name  { font-weight: 600; color: var(--navy); margin-bottom: 1px; }
+.sat-item-freq  { color: var(--text-muted); font-family: 'Fira Code', monospace; font-size: 10px; }
+.sat-ind        { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
+.sat-ind.delayed{ background: var(--amber); }
+.sat-ind.offline{ background: var(--red); }
+
+/* ── Layer toggles ── */
+.left-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.layer-list { display: flex; flex-direction: column; gap: 3px; }
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: background 0.12s;
+}
+.layer-row:hover { background: var(--surface-2); }
+.layer-name {
+  font-size: 11.5px;
+  color: var(--text-secondary);
+  flex: 1;
+}
+.layer-row.on .layer-name { color: var(--navy); }
+
+.layer-color {
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* Toggle switch */
+.tog {
+  width: 30px; height: 16px;
+  border-radius: 9px;
+  background: var(--border-strong);
+  position: relative;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.tog.on { background: var(--blue); }
+.tog::after {
+  content: '';
+  position: absolute;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: white;
+  top: 2px; left: 2px;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.tog.on::after { transform: translateX(14px); }

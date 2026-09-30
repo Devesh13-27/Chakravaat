@@ -1,0 +1,328 @@
+/* ============================================================
+   right-panel.css — Intelligence, Forecast, XAI, Environment
+   ============================================================ */
+
+.right-panel {
+  width: var(--right-panel-w);
+  flex-shrink: 0;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── Tab bar ── */
+.r-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+.r-tab {
+  flex: 1;
+  padding: 10px 4px;
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-bottom: 2.5px solid transparent;
+  transition: all 0.15s;
+  letter-spacing: 0.01em;
+  user-select: none;
+}
+.r-tab.active {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+  background: var(--surface);
+  font-weight: 600;
+}
+.r-tab:hover:not(.active) { color: var(--navy); }
+
+/* ── Scrollable body ── */
+.r-body {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── Tab panes ── */
+.tab-pane          { display: none; }
+.tab-pane.active   { display: block; }
+
+/* ── Generic section ── */
+.r-sec {
+  padding: 14px 15px;
+  border-bottom: 1px solid var(--border);
+}
+.r-sec-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 11px;
+  letter-spacing: 0.02em;
+}
+
+/* ══════════════════════════════════════
+   INTELLIGENCE TAB
+   ══════════════════════════════════════ */
+
+.int-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 13px;
+}
+.int-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.int-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 5px;
+  letter-spacing: 0.05em;
+  background: var(--red-light);
+  color: var(--red);
+  border: 1px solid rgba(230,57,70,0.25);
+  transition: all 0.2s;
+}
+
+/* Gauge */
+.int-gauge-row {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+}
+#gaugeWrapper svg { display: block; }
+
+.int-stats {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.int-stat-lbl {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 2px;
+}
+.int-stat-val {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: 'Fira Code', monospace;
+  color: var(--navy);
+  line-height: 1;
+}
+.int-stat-unit {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 400;
+}
+
+/* Classification bars */
+.cls-item { margin-bottom: 9px; }
+.cls-item:last-child { margin-bottom: 0; }
+.cls-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 3px;
+}
+.cls-name { font-size: 11px; color: var(--text-secondary); }
+.cls-pct  { font-size: 11px; font-family: 'Fira Code', monospace; font-weight: 600; color: var(--navy); }
+.cls-track {
+  width: 100%; height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.cls-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
+/* Alert items */
+.alert-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 11px;
+  border-radius: 7px;
+  margin-bottom: 7px;
+  border: 1px solid;
+}
+.alert-item:last-child { margin-bottom: 0; }
+.alert-item.crit { background: var(--red-light);   border-color: rgba(230,57,70,0.3); }
+.alert-item.warn { background: var(--amber-light); border-color: rgba(244,162,97,0.35); }
+.alert-item.info { background: var(--blue-light);  border-color: rgba(0,119,182,0.2); }
+
+.alert-icon  { font-size: 15px; flex-shrink: 0; line-height: 1.4; }
+.alert-title { font-size: 11.5px; font-weight: 700; margin-bottom: 2px; }
+.alert-body  { font-size: 10.5px; color: var(--text-secondary); line-height: 1.5; }
+.alert-item.crit .alert-title { color: var(--red); }
+.alert-item.warn .alert-title { color: #B06010; }
+.alert-item.info .alert-title { color: var(--blue); }
+
+/* ══════════════════════════════════════
+   FORECAST TAB
+   ══════════════════════════════════════ */
+
+.fc-table { width: 100%; border-collapse: collapse; }
+.fc-table th {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 4px 7px;
+  text-align: right;
+  border-bottom: 1.5px solid var(--border);
+}
+.fc-table th:first-child { text-align: left; }
+.fc-table td {
+  padding: 7px 7px;
+  font-size: 11.5px;
+  text-align: right;
+  border-bottom: 1px solid var(--border);
+  font-family: 'Fira Code', monospace;
+  color: var(--text-secondary);
+}
+.fc-table td:first-child {
+  text-align: left;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  color: var(--navy);
+  font-size: 12px;
+}
+.fc-table tr.fc-now td {
+  background: var(--blue-light);
+  color: var(--blue);
+  font-weight: 700;
+}
+.fc-table tr.fc-now td:first-child { color: var(--blue); }
+.fc-table tr:last-child td { border-bottom: none; }
+
+.trend-up { color: var(--red)  !important; }
+.trend-dn { color: var(--teal) !important; }
+
+/* Uncertainty rows */
+.unc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+.unc-row:last-child { margin-bottom: 0; }
+.unc-lbl { font-size: 11px; color: var(--text-secondary); flex: 1; }
+.unc-val { font-family: 'Fira Code', monospace; font-size: 11.5px; color: var(--blue); font-weight: 600; }
+
+/* ══════════════════════════════════════
+   XAI TAB
+   ══════════════════════════════════════ */
+
+.feat-list { display: flex; flex-direction: column; gap: 7px; }
+.feat-row  { display: flex; align-items: center; gap: 8px; font-size: 11px; }
+.feat-name { width: 135px; color: var(--text-secondary); flex-shrink: 0; }
+.feat-track {
+  flex: 1; height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.feat-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+.feat-pct {
+  width: 32px;
+  text-align: right;
+  font-family: 'Fira Code', monospace;
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+/* Model stack */
+.model-item { margin-bottom: 9px; }
+.model-item:last-child { margin-bottom: 0; }
+.model-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+}
+.model-name { font-size: 11px; color: var(--text-secondary); }
+.model-pct  { font-family: 'Fira Code', monospace; font-size: 11.5px; color: var(--navy); font-weight: 600; }
+.model-track {
+  width: 100%; height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.model-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--blue), var(--teal));
+  transition: width 0.6s ease;
+}
+
+/* ══════════════════════════════════════
+   ENVIRONMENT TAB
+   ══════════════════════════════════════ */
+
+.env-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.env-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 10px;
+}
+.env-lbl {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 4px;
+}
+.env-val {
+  font-size: 19px;
+  font-weight: 700;
+  font-family: 'Fira Code', monospace;
+  color: var(--navy);
+  line-height: 1;
+}
+.env-unit  { font-size: 10px; color: var(--text-muted); font-family: 'DM Sans', sans-serif; }
+.env-trend { font-size: 10px; margin-top: 4px; font-weight: 500; }
+
+/* Data source chips */
+.source-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding: 5px 8px;
+  background: var(--surface-2);
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  margin-bottom: 5px;
+}
+.source-chip:last-child { margin-bottom: 0; }
+.source-chip strong { color: var(--navy); }

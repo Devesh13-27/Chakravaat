@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Chakravaat — Tropical Cyclone Intelligence System</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Fira+Code:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/topbar.css" />
+  <link rel="stylesheet" href="css/left-panel.css" />
+  <link rel="stylesheet" href="css/map.css" />
+  <link rel="stylesheet" href="css/right-panel.css" />
+</head>
+<body>
+
+  <!-- ── TOPBAR ── -->
+  <header class="topbar">
+    <div class="logo">
+      <div class="logo-mark"></div>
+      <div>
+        <div class="logo-text">Chakravaat</div>
+        <div class="logo-sub">Tropical Cyclone Intelligence System</div>
+      </div>
+    </div>
+
+    <nav class="nav-pills">
+      <button class="nav-pill active" data-view="live">Live Monitor</button>
+      <button class="nav-pill" data-view="predict">Prediction</button>
+      <button class="nav-pill" data-view="replay">History Replay</button>
+      <button class="nav-pill" data-view="analysis">Analysis</button>
+    </nav>
+
+    <div class="topbar-right">
+      <div class="sat-status" data-sat="INSAT-3DR">
+        <div class="sat-dot"></div>INSAT-3DR
+      </div>
+      <div class="sat-status" data-sat="HIMAWARI-9">
+        <div class="sat-dot"></div>HIMAWARI-9
+      </div>
+      <div class="sat-status" data-sat="ERA5">
+        <div class="sat-dot warn"></div>ERA5
+      </div>
+      <div class="alert-badge" id="alertBadge">⚠ VSCS ACTIVE</div>
+      <div class="clock-display" id="clock">UTC 00:00:00</div>
+    </div>
+  </header>
+
+  <!-- ── MAIN LAYOUT ── -->
+  <div class="main">
+
+    <!-- LEFT PANEL -->
+    <aside class="left-panel">
+      <div class="panel-sec">
+        <div class="panel-lbl" id="activeSystemsLabel">Active Systems (2)</div>
+
+        <!-- Storm cards are rendered by JS: ui.js → renderStormCards() -->
+        <!-- When backend is ready, replace STORM_DATA in js/data.js with API response -->
+        <div id="stormCardContainer"></div>
+      </div>
+
+      <div class="panel-sec">
+        <div class="panel-lbl">Satellite Feeds</div>
+        <div class="sat-list" id="satFeedList">
+          <!-- Rendered by ui.js → renderSatFeeds() -->
+        </div>
+      </div>
+
+      <div class="left-scroll">
+        <div class="panel-sec">
+          <div class="panel-lbl">Map Layers</div>
+          <div class="layer-list" id="layerList">
+            <!-- Rendered by ui.js → renderLayerToggles() -->
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAP -->
+    <div class="map-container" id="mapContainer">
+
+      <!-- SVG map is rendered by map.js → renderMap() -->
+      <!-- Replace with Leaflet/MapboxGL/OpenLayers when integrating real tiles -->
+      <div id="mapSvgWrapper"></div>
+
+      <!-- AI Detection Overlay -->
+      <div class="detect-box" id="detectBox">
+        <div class="detect-title" id="detectTitle">AI Detection · —</div>
+        <div class="detect-row">
+          <span class="detect-lbl">Status</span>
+          <span class="detect-val confirmed" id="detectStatus">—</span>
+        </div>
+        <div class="detect-row">
+          <span class="detect-lbl">Confidence</span>
+          <span class="detect-val high" id="detectConf">—</span>
+        </div>
+        <div class="detect-row">
+          <span class="detect-lbl">Center</span>
+          <span class="detect-val" id="detectCenter">—</span>
+        </div>
+        <div class="detect-row">
+          <span class="detect-lbl">Model</span>
+          <span class="detect-val" style="color:var(--blue)" id="detectModel">—</span>
+        </div>
+        <div class="detect-conf-bar">
+          <div class="detect-conf-fill" id="detectConfBar" style="width:0%"></div>
+        </div>
+      </div>
+
+      <!-- Map controls -->
+      <div class="map-btns">
+        <div class="map-btn" id="zoomIn"  title="Zoom in">＋</div>
+        <div class="map-btn" id="zoomOut" title="Zoom out">－</div>
+        <div class="map-btn" id="zoomReset" title="Reset view">⌖</div>
+      </div>
+
+      <!-- Map attribution / satellite label -->
+      <div class="map-attr" id="mapAttr">Select a satellite feed</div>
+
+      <!-- Timeline / Replay Bar -->
+      <div class="replay-bar">
+        <span class="rp-lbl">Timeline</span>
+        <div class="rp-btn" id="stepBack"  title="Step back">◂</div>
+        <div class="rp-btn" id="playBtn"   title="Play / Pause">▶</div>
+        <div class="rp-btn" id="stepFwd"   title="Step forward">▸</div>
+        <div class="tl-wrap">
+          <div class="tl-labels" id="tlLabels">
+            <!-- date ticks injected by timeline.js -->
+          </div>
+          <div class="tl-track" id="tlTrack">
+            <div class="tl-fill"  id="tlFill"></div>
+            <div class="tl-thumb" id="tlThumb"></div>
+          </div>
+        </div>
+        <div class="rp-speed" id="speedBtn">1×</div>
+        <div class="rp-date"  id="rpDate">—</div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <aside class="right-panel">
+      <div class="r-tabs">
+        <div class="r-tab active" data-tab="intel">Intelligence</div>
+        <div class="r-tab" data-tab="forecast">Forecast</div>
+        <div class="r-tab" data-tab="xai">XAI</div>
+        <div class="r-tab" data-tab="env">Environment</div>
+      </div>
+
+      <div class="r-body">
+
+        <!-- ── INTELLIGENCE TAB ── -->
+        <div id="pane-intel" class="tab-pane active">
+          <div class="r-sec">
+            <div class="int-header">
+              <div class="int-name" id="stormNameDisplay">—</div>
+              <div class="int-badge" id="stormBadge">—</div>
+            </div>
+            <div class="int-gauge-row">
+              <!-- Gauge SVG injected by ui.js → updateGauge() -->
+              <div id="gaugeWrapper"></div>
+              <div class="int-stats">
+                <div class="int-stat">
+                  <div class="int-stat-lbl">Wind Speed</div>
+                  <div class="int-stat-val" id="dispWind">— <span class="int-stat-unit">km/h</span></div>
+                </div>
+                <div class="int-stat">
+                  <div class="int-stat-lbl">Central Pressure</div>
+                  <div class="int-stat-val" id="dispPres">— <span class="int-stat-unit">hPa</span></div>
+                </div>
+                <div class="int-stat">
+                  <div class="int-stat-lbl">AI Confidence</div>
+                  <div class="int-stat-val" id="dispConf">— <span class="int-stat-unit">%</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="r-sec">
+            <div class="r-sec-title">Classification Confidence</div>
+            <div id="classificationBars">
+              <!-- Rendered by ui.js → renderClassification() -->
+            </div>
+          </div>
+
+          <div class="r-sec" style="border:none">
+            <div class="r-sec-title">Active Alerts</div>
+            <div id="alertsList">
+              <!-- Rendered by ui.js → renderAlerts() -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ── FORECAST TAB ── -->
+        <div id="pane-forecast" class="tab-pane">
+          <div class="r-sec">
+            <div class="r-sec-title" id="trackTableTitle">Track Prediction — —</div>
+            <table class="fc-table" id="trackTable">
+              <thead>
+                <tr><th>Time</th><th>Lat</th><th>Lon</th><th>Dist.</th></tr>
+              </thead>
+              <tbody id="trackTableBody">
+                <!-- Rendered by ui.js → renderForecastTables() -->
+              </tbody>
+            </table>
+            <div style="font-size:9.5px;color:var(--text-muted);margin-top:7px;">
+              * 48h uncertainty corridor ±120 km
+            </div>
+          </div>
+
+          <div class="r-sec">
+            <div class="r-sec-title">Intensity Forecast</div>
+            <table class="fc-table" id="intensityTable">
+              <thead>
+                <tr><th>Time</th><th>Wind</th><th>Pressure</th><th>Class</th></tr>
+              </thead>
+              <tbody id="intensityTableBody">
+                <!-- Rendered by ui.js → renderForecastTables() -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="r-sec" style="border:none">
+            <div class="r-sec-title">Prediction Uncertainty</div>
+            <div id="uncertaintyRows">
+              <!-- Rendered by ui.js → renderUncertainty() -->
+            </div>
+            <div class="disclaimer-box">
+              Uncertainty via ensemble dropout. This AI tool does not replace official IMD forecasts.
+            </div>
+          </div>
+        </div>
+
+        <!-- ── XAI TAB ── -->
+        <div id="pane-xai" class="tab-pane">
+          <div class="r-sec">
+            <div class="r-sec-title">Grad-CAM Saliency Map</div>
+            <div class="gradcam-box">
+              <div class="gradcam-inner">
+                <div class="cloud-sim"></div>
+                <div class="heat-layer"></div>
+                <!-- When backend is ready: replace .gradcam-inner with <img> from API -->
+                <svg style="position:absolute;inset:0;width:100%;height:100%" viewBox="0 0 288 130">
+                  <circle cx="154" cy="60" r="13" fill="none" stroke="rgba(230,57,70,0.7)" stroke-width="1.5"/>
+                  <circle cx="154" cy="60" r="5"  fill="rgba(230,57,70,0.6)"/>
+                  <circle cx="118" cy="50" r="7"  fill="none" stroke="rgba(244,162,97,0.5)" stroke-width="1"/>
+                  <circle cx="184" cy="74" r="9"  fill="none" stroke="rgba(244,162,97,0.4)" stroke-width="1"/>
+                </svg>
+                <div class="gc-badge">Grad-CAM</div>
+              </div>
+            </div>
+            <div class="xai-caption">
+              Red zone: highest attention on cyclone eye and cold cloud tops.
+              Warm bands contribute to intensity estimate.
+            </div>
+
+            <div class="r-sec-title" style="margin-top:10px">Feature Contributions</div>
+            <div class="feat-list" id="featureList">
+              <!-- Rendered by ui.js → renderFeatureImportance() -->
+            </div>
+          </div>
+
+          <div class="r-sec" style="border:none">
+            <div class="r-sec-title">Model Stack</div>
+            <div id="modelStackList">
+              <!-- Rendered by ui.js → renderModelStack() -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ── ENVIRONMENT TAB ── -->
+        <div id="pane-env" class="tab-pane">
+          <div class="env-grid" id="envGrid">
+            <!-- Rendered by ui.js → renderEnvCards() -->
+          </div>
+
+          <div class="r-sec">
+            <div class="r-sec-title">ERA5 Reanalysis</div>
+            <div id="era5Rows">
+              <!-- Rendered by ui.js → renderERA5() -->
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:8px;" id="era5Timestamp">
+              Last sync: —
+            </div>
+          </div>
+
+          <div class="r-sec" style="border:none">
+            <div class="r-sec-title">Data Sources</div>
+            <div id="dataSourcesList">
+              <!-- Rendered by ui.js → renderDataSources() -->
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /r-body -->
+    </aside>
+
+  </div><!-- /main -->
+
+  <!-- Toast notification (injected by ui.js) -->
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <!-- JavaScript modules — load order matters -->
+  <script src="js/data.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/timeline.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,149 @@
+/* ============================================================
+   topbar.css — Top navigation bar
+   ============================================================ */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  height: var(--topbar-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Logo */
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.logo-mark {
+  width: 30px; height: 30px;
+  border: 2px solid var(--blue);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  animation: logo-spin 14s linear infinite;
+  background: var(--blue-light);
+  flex-shrink: 0;
+}
+.logo-mark::before {
+  content: '';
+  position: absolute;
+  width: 16px; height: 16px;
+  border: 1.5px solid rgba(0,119,182,0.4);
+  border-radius: 50%;
+  animation: logo-spin 7s linear infinite reverse;
+}
+.logo-mark::after {
+  content: '';
+  width: 5px; height: 5px;
+  background: var(--blue);
+  border-radius: 50%;
+}
+
+.logo-text {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--navy);
+  line-height: 1.2;
+}
+.logo-text span { color: var(--blue); }
+
+.logo-sub {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+/* Nav pills */
+.nav-pills {
+  display: flex;
+  gap: 2px;
+  background: var(--bg);
+  padding: 3px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.nav-pill {
+  padding: 5px 13px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  color: var(--text-secondary);
+  background: transparent;
+  transition: all 0.15s;
+  font-family: 'DM Sans', sans-serif;
+}
+.nav-pill:hover { color: var(--navy); background: var(--surface); }
+.nav-pill.active {
+  background: var(--surface);
+  color: var(--blue);
+  box-shadow: var(--shadow-sm);
+  font-weight: 600;
+}
+
+/* Satellite status + clock */
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sat-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-family: 'Fira Code', monospace;
+  color: var(--text-muted);
+  background: var(--surface-2);
+  padding: 4px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+
+.sat-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--teal);
+  animation: dot-pulse 2.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.sat-dot.warn { background: var(--amber); }
+
+.alert-badge {
+  background: var(--red);
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 5px;
+  letter-spacing: 0.04em;
+  animation: badge-glow 2s ease-in-out infinite;
+  font-family: 'DM Sans', sans-serif;
+  cursor: default;
+}
+
+.clock-display {
+  font-family: 'Fira Code', monospace;
+  font-size: 11.5px;
+  background: var(--navy);
+  color: #E8F4FF;
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  min-width: 115px;
+  text-align: center;
+}

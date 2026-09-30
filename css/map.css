@@ -1,0 +1,286 @@
+/* ============================================================
+   map.css — Map container, overlays, replay bar
+   ============================================================ */
+
+.map-container {
+  flex: 1;
+  position: relative;
+  background: #D4E8F7;
+  overflow: hidden;
+}
+
+/* The SVG (or future tile map) fills the container */
+#mapSvgWrapper {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#mapSvgWrapper svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  transform-origin: center center;
+  transition: transform 0.2s ease;
+}
+
+/* ── AI Detection overlay ── */
+.detect-box {
+  position: absolute;
+  top: 14px; left: 14px;
+  background: rgba(255,255,255,0.96);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  z-index: 10;
+  box-shadow: var(--shadow-md);
+  min-width: 195px;
+  backdrop-filter: blur(8px);
+}
+
+.detect-title {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.detect-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+  font-size: 11.5px;
+}
+.detect-lbl { color: var(--text-secondary); }
+.detect-val {
+  font-family: 'Fira Code', monospace;
+  font-weight: 600;
+  color: var(--navy);
+}
+.detect-val.confirmed { color: var(--teal); }
+.detect-val.high      { color: var(--red); }
+
+.detect-conf-bar {
+  width: 100%; height: 5px;
+  background: var(--border);
+  border-radius: 3px;
+  margin-top: 7px;
+  overflow: hidden;
+}
+.detect-conf-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(to right, var(--blue), var(--teal));
+  transition: width 0.5s ease;
+}
+
+/* ── Map control buttons ── */
+.map-btns {
+  position: absolute;
+  bottom: calc(var(--replay-bar-h) + 14px);
+  left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  z-index: 10;
+}
+
+.map-btn {
+  width: 30px; height: 30px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 15px;
+  transition: all 0.15s;
+  box-shadow: var(--shadow-sm);
+  user-select: none;
+}
+.map-btn:hover {
+  border-color: var(--blue);
+  color: var(--blue);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Map attribution ── */
+.map-attr {
+  position: absolute;
+  bottom: calc(var(--replay-bar-h) + 10px);
+  right: 14px;
+  font-size: 10px;
+  font-family: 'Fira Code', monospace;
+  color: rgba(30,58,95,0.55);
+  background: rgba(255,255,255,0.82);
+  padding: 3px 8px;
+  border-radius: 4px;
+  z-index: 10;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(216,227,238,0.8);
+  backdrop-filter: blur(4px);
+}
+
+/* ── Replay / timeline bar ── */
+.replay-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: var(--replay-bar-h);
+  background: rgba(255,255,255,0.97);
+  border-top: 1px solid var(--border);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 15;
+  box-shadow: 0 -2px 8px rgba(30,58,95,0.06);
+}
+
+.rp-lbl {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+.rp-btn {
+  width: 28px; height: 28px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 12px;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  user-select: none;
+}
+.rp-btn:hover   { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
+.rp-btn.playing { background: var(--blue); border-color: var(--blue); color: white; }
+
+/* Timeline slider */
+.tl-wrap {
+  flex: 1;
+  position: relative;
+  padding-top: 14px;
+}
+
+.tl-labels {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 9.5px;
+  font-family: 'Fira Code', monospace;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.tl-track {
+  width: 100%; height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  position: relative;
+  cursor: pointer;
+}
+.tl-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--blue), var(--red));
+  border-radius: 2px;
+  pointer-events: none;
+  transition: width 0.05s linear;
+}
+.tl-thumb {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: white;
+  border: 2.5px solid var(--blue);
+  pointer-events: none;
+  box-shadow: var(--shadow-sm);
+  transition: left 0.05s linear;
+}
+
+.rp-speed {
+  font-size: 11px;
+  font-family: 'Fira Code', monospace;
+  font-weight: 600;
+  color: var(--navy);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 4px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  user-select: none;
+}
+.rp-speed:hover { border-color: var(--blue); color: var(--blue); }
+
+.rp-date {
+  font-size: 10.5px;
+  font-family: 'Fira Code', monospace;
+  font-weight: 500;
+  background: var(--navy);
+  color: #E8F4FF;
+  padding: 4px 9px;
+  border-radius: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 100px;
+  text-align: center;
+}
+
+/* ── Grad-CAM in XAI tab ── */
+.gradcam-box {
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1.5px solid var(--border);
+  margin-bottom: 11px;
+  position: relative;
+}
+.gradcam-inner {
+  width: 100%; height: 130px;
+  background: linear-gradient(135deg, #1E3A5F 0%, #2C5282 50%, #1a3a6b 100%);
+  position: relative;
+  overflow: hidden;
+}
+.cloud-sim {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 55% 45%, rgba(255,255,255,0.2) 0%, transparent 22%),
+    radial-gradient(ellipse 65% 48% at 55% 45%, rgba(150,190,230,0.25) 0%, transparent 55%),
+    radial-gradient(circle at 28% 58%, rgba(200,225,255,0.12) 0%, transparent 28%);
+  animation: cld-anim 7s ease-in-out infinite alternate;
+}
+.heat-layer {
+  position: absolute; inset: 0;
+  background: radial-gradient(
+    ellipse 58% 42% at 55% 44%,
+    rgba(230,57,70,0.55) 0%,
+    rgba(244,162,97,0.35) 28%,
+    rgba(0,119,182,0.18) 58%,
+    transparent 78%
+  );
+  mix-blend-mode: screen;
+}
+.gc-badge {
+  position: absolute; top: 7px; right: 7px;
+  font-size: 9px;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.35);
+  color: white;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  backdrop-filter: blur(4px);
+}
