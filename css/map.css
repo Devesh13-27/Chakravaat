@@ -5,8 +5,17 @@
 .map-container {
   flex: 1;
   position: relative;
-  background: #D4E8F7;
   overflow: hidden;
+
+  background:
+    radial-gradient(
+      ellipse at 52% 48%,
+      rgba(22, 73, 112, 0.55) 0%,
+      rgba(8, 29, 50, 0.75) 42%,
+      #061421 100%
+    );
+
+  isolation: isolate;
 }
 
 /* The SVG (or future tile map) fills the container */

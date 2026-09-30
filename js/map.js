@@ -42,9 +42,11 @@ const Map = (() => {
 
     svg.innerHTML = `
       <defs>
-        <radialGradient id="oceanG" cx="50%" cy="50%" r="70%">
-          <stop offset="0%"   stop-color="#B8D9F0"/>
-          <stop offset="100%" stop-color="#8EC5E8"/>
+        <radialGradient id="oceanG" cx="52%" cy="46%" r="78%">
+          <stop offset="0%" stop-color="#123D5D"/>
+          <stop offset="42%" stop-color="#0B2B46"/>
+          <stop offset="75%" stop-color="#081D32"/>
+          <stop offset="100%" stop-color="#05131F"/>
         </radialGradient>
         <radialGradient id="redGlow" cx="50%" cy="50%" r="50%">
           <stop offset="0%"   stop-color="#E63946" stop-opacity="0.25"/>
@@ -53,6 +55,25 @@ const Map = (() => {
         <radialGradient id="blueGlow" cx="50%" cy="50%" r="50%">
           <stop offset="0%"   stop-color="#0077B6" stop-opacity="0.2"/>
           <stop offset="100%" stop-color="#0077B6" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="oceanGlow">
+          <feTurbulence
+            type="fractalNoise"
+            baseFrequency="0.012"
+            numOctaves="3"
+            seed="7"
+          />
+
+          <feColorMatrix type="saturate" values="0"/>
+          <feComponentTransfer>
+            <feFuncA type="table" tableValues="0 0.08"/>
+          </feComponentTransfer>
+        </filter>
+
+        <radialGradient id="stormAtmosphere">
+          <stop offset="0%" stop-color="#22D3EE" stop-opacity="0.18"/>
+          <stop offset="35%" stop-color="#38BDF8" stop-opacity="0.08"/>
+          <stop offset="100%" stop-color="#38BDF8" stop-opacity="0"/>
         </radialGradient>
         <filter id="fblur3"><feGaussianBlur stdDeviation="3"/></filter>
         <filter id="fblur5"><feGaussianBlur stdDeviation="5"/></filter>
@@ -63,13 +84,23 @@ const Map = (() => {
 
       <!-- Ocean background -->
       <rect width="${VIEW_W}" height="${VIEW_H}" fill="url(#oceanG)"/>
+      <rect
+        width="${VIEW_W}"
+        height="${VIEW_H}"
+        filter="url(#oceanGlow)"
+        opacity="0.7"
+      />
 
       <!-- Lat/lon grid -->
-      <g stroke="rgba(30,58,95,0.1)" stroke-width="0.5">
+      <g
+        stroke="rgba(103, 191, 225, 0.12)"
+        stroke-width="0.5"
+        stroke-dasharray="2 5"
+      >
         ${[90,180,270,360,450,540,630,720,810].map(x=>`<line x1="${x}" y1="0" x2="${x}" y2="${VIEW_H}"/>`).join('')}
         ${[95,190,285,380,475].map(y=>`<line x1="0" y1="${y}" x2="${VIEW_W}" y2="${y}"/>`).join('')}
       </g>
-      <g fill="rgba(30,58,95,0.3)" font-family="Fira Code, monospace" font-size="8.5">
+      <g fill="rgba(148,163,184,0.45)" font-family="Fira Code, monospace" font-size="8.5">
         <text x="84"  y="92">60°E</text>
         <text x="174" y="92">70°E</text>
         <text x="264" y="92">80°E</text>
@@ -83,31 +114,36 @@ const Map = (() => {
       <path d="M 235 40 L 295 50 L 348 68 L 368 95 L 378 135 L 362 172 L 335 205
                L 312 245 L 300 282 L 286 312 L 272 294 L 252 264 L 242 238
                L 232 210 L 222 182 L 218 155 L 222 125 L 226 95 L 230 65 Z"
-        fill="#C8D8E8" stroke="rgba(30,58,95,0.25)" stroke-width="1" filter="url(#fshadow)"/>
-      <text x="255" y="195" fill="rgba(30,58,95,0.5)"
-        font-family="DM Sans, sans-serif" font-size="11" font-weight="600"
-        letter-spacing="0.05em">INDIA</text>
+        fill="#142B3D"
+        stroke="rgba(103,191,225,0.35)" stroke-width="1" filter="url(#fshadow)"/>
+      <text x="255" y="195" fill="rgba(203,213,225,0.72)"
+        font-family="DM Sans, sans-serif" font-size="12" font-weight="600"
+        letter-spacing="0.12em">INDIA</text>
 
       <!-- Sri Lanka -->
       <path d="M 292 325 L 302 335 L 297 350 L 288 345 Z"
-        fill="#C8D8E8" stroke="rgba(30,58,95,0.2)" stroke-width="1"/>
+        fill="#142B3D"
+        stroke="rgba(103,191,225,0.35)" stroke-width="1"/>
 
       <!-- Arabian Peninsula -->
       <path d="M 0 0 L 95 0 L 128 35 L 138 72 L 118 112 L 98 132
                L 78 122 L 58 102 L 38 82 L 18 55 L 0 28 Z"
-        fill="#C8D8E8" stroke="rgba(30,58,95,0.2)" stroke-width="1"/>
+        fill="#142B3D"
+        stroke="rgba(103,191,225,0.35)" stroke-width="1"/>
       <text x="22" y="75" fill="rgba(30,58,95,0.4)" font-family="DM Sans, sans-serif" font-size="8.5">ARABIAN</text>
       <text x="22" y="87" fill="rgba(30,58,95,0.4)" font-family="DM Sans, sans-serif" font-size="8.5">PENINSULA</text>
 
       <!-- Pakistan/Iran coast -->
       <path d="M 95 0 L 192 0 L 212 18 L 208 46 L 195 50 L 180 46
                L 158 36 L 138 35 L 128 35 Z"
-        fill="#C8D8E8" stroke="rgba(30,58,95,0.2)" stroke-width="1"/>
+        fill="#142B3D"
+        stroke="rgba(103,191,225,0.35)" stroke-width="1"/>
 
       <!-- Myanmar / Bangladesh -->
       <path d="M 398 40 L 495 40 L 515 90 L 505 130 L 485 142
                L 465 122 L 446 92 L 426 72 L 408 55 Z"
-        fill="#C8D8E8" stroke="rgba(30,58,95,0.2)" stroke-width="1"/>
+        fill="#142B3D"
+        stroke="rgba(103,191,225,0.35)" stroke-width="1"/>
       <text x="432" y="90" fill="rgba(30,58,95,0.4)"
         font-family="DM Sans, sans-serif" font-size="8.5">MYANMAR</text>
 
