@@ -12,7 +12,7 @@
    2. On timeline tick (in Timeline's onTick callback below),
       call:
         const snapshot = await fetch(`/api/v1/storms/history?t=${isoTime}`);
-        Map.renderMap(snapshot.storms);
+        ChakravaatMap.renderMap(snapshot.storms);
         UI.updateStormPanel(snapshot.storms.find(s => s.id === _activeStormId));
 
    3. For real ENV data per storm, call:
@@ -48,7 +48,7 @@ const App = (() => {
     UI.renderStormCards(window.STORM_DATA, _activeStormId, selectStorm);
 
     /* Update map detection overlay */
-    Map.updateDetectionOverlay(storm);
+    ChakravaatMap.updateDetectionOverlay(storm);
 
     /* Update right panel */
     UI.updateStormPanel(storm);
@@ -70,14 +70,14 @@ const App = (() => {
     if (!feed) return;
 
     UI.renderSatFeeds(window.SAT_FEEDS, _activeSatIdx, selectSat);
-    Map.updateMapAttr(`2024-06-14 09:40 UTC · ${feed.name} · ${feed.freq}`);
+    ChakravaatMap.updateMapAttr(`2024-06-14 09:40 UTC · ${feed.name} · ${feed.freq}`);
     UI.toast(`Feed: ${feed.name}`);
   }
 
   /* ── Layer toggle ────────────────────────────────────────── */
   function onLayerToggle(idx, isOn, layer) {
     /* layer.id is e.g. "g-predicted" — match SVG group ids that start with it */
-    Map.setLayerVisible(layer.id, isOn);
+    ChakravaatMap.setLayerVisible(layer.id, isOn);
     UI.toast(`${layer.label}: ${isOn ? 'On' : 'Off'}`);
   }
 
@@ -95,9 +95,9 @@ const App = (() => {
   }
 
   /* ── Map zoom ────────────────────────────────────────────── */
-  function onZoomIn()    { UI.toast(`Zoom: ${Math.round(Map.zoom(1)  * 100)}%`); }
-  function onZoomOut()   { UI.toast(`Zoom: ${Math.round(Map.zoom(-1) * 100)}%`); }
-  function onZoomReset() { Map.resetZoom(); UI.toast('View reset'); }
+  function onZoomIn()    { UI.toast(`Zoom: ${Math.round(ChakravaatMap.zoom(1)  * 100)}%`); }
+  function onZoomOut()   { UI.toast(`Zoom: ${Math.round(ChakravaatMap.zoom(-1) * 100)}%`); }
+  function onZoomReset() { ChakravaatMap.resetZoom(); UI.toast('View reset'); }
 
   /* ── Timeline tick ───────────────────────────────────────── */
   function onTimelineTick(progress, dateLabel) {
@@ -106,7 +106,7 @@ const App = (() => {
        e.g.:
          const iso = progressToISO(progress);
          fetchSnapshot(iso).then(snapshot => {
-           Map.renderMap(snapshot.storms);
+           ChakravaatMap.renderMap(snapshot.storms);
            UI.updateStormPanel(snapshot.storms.find(s => s.id === _activeStormId));
          });
        For now, just update the date display (already done by timeline.js).
@@ -119,7 +119,7 @@ const App = (() => {
     UI.startClock();
 
     /* Render map */
-    Map.renderMap(window.STORM_DATA);
+    ChakravaatMap.renderMap(window.STORM_DATA);
 
     /* Default active storm = first in list */
     _activeStormId = window.STORM_DATA[0]?.id || null;
@@ -132,7 +132,7 @@ const App = (() => {
     /* Right panel initial state */
     const storm = getActiveStorm();
     if (storm) {
-      Map.updateDetectionOverlay(storm);
+      ChakravaatMap.updateDetectionOverlay(storm);
       UI.updateStormPanel(storm);
     }
 
@@ -147,7 +147,7 @@ const App = (() => {
     /* Map attribution default */
     const defaultFeed = window.SAT_FEEDS[0];
     if (defaultFeed) {
-      Map.updateMapAttr(`2024-06-14 09:40 UTC · ${defaultFeed.name} · ${defaultFeed.freq}`);
+      ChakravaatMap.updateMapAttr(`2024-06-14 09:40 UTC · ${defaultFeed.name} · ${defaultFeed.freq}`);
     }
 
     /* Tabs */
@@ -192,3 +192,40 @@ const App = (() => {
 
 /* ── Start ──────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', () => App.init());
+
+function updateClocks() {
+  const now = new Date();
+
+  const istTime = now.toLocaleTimeString("en-IN", {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+
+  const utcTime = now.toLocaleTimeString("en-GB", {
+    timeZone: "UTC",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+
+  const istElement = document.getElementById("istTime");
+  const utcElement = document.getElementById("utcTime");
+
+  if (istElement) {
+    istElement.textContent = `IST ${istTime}`;
+  }
+
+  if (utcElement) {
+    utcElement.textContent = `UTC ${utcTime}`;
+  }
+}
+
+// Initial update
+updateClocks();
+
+// Update every second
+setInterval(updateClocks, 1000);

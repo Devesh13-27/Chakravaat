@@ -18,278 +18,646 @@
   isolation: isolate;
 }
 
-/* The SVG (or future tile map) fills the container */
+/* ============================================================
+   GOOGLE MAPS CONTAINER
+   ============================================================ */
+
 #mapSvgWrapper {
   position: absolute;
   inset: 0;
+
   width: 100%;
   height: 100%;
-}
-#mapSvgWrapper svg {
-  width: 100%;
-  height: 100%;
-  display: block;
-  transform-origin: center center;
-  transition: transform 0.2s ease;
+
+  overflow: hidden;
+
+  background: #061421;
 }
 
-/* ── AI Detection overlay ── */
+/*
+   Google Maps replaces the old SVG here.
+
+   Do NOT keep the old #mapSvgWrapper svg rules.
+*/
+
+#mapSvgWrapper .gm-style {
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+}
+
+/* ============================================================
+   MAP VIGNETTE
+   ============================================================ */
+
+.map-container::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  background:
+    radial-gradient(
+      ellipse at center,
+      transparent 48%,
+      rgba(3, 10, 18, 0.20) 100%
+    );
+
+  z-index: 2;
+}
+
+/* ============================================================
+   AI DETECTION OVERLAY
+   ============================================================ */
+
 .detect-box {
   position: absolute;
-  top: 14px; left: 14px;
-  background: rgba(255,255,255,0.96);
-  border: 1.5px solid var(--border);
+
+  top: 14px;
+  left: 14px;
+
+  background: rgba(7, 17, 31, 0.90);
+
+  border:
+    1px solid rgba(34, 211, 238, 0.25);
+
   border-radius: 10px;
+
   padding: 11px 14px;
+
   z-index: 10;
-  box-shadow: var(--shadow-md);
+
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.28);
+
   min-width: 195px;
-  backdrop-filter: blur(8px);
+
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+
+  color: #E6EDF5;
 }
 
 .detect-title {
   font-size: 9.5px;
   font-weight: 600;
-  color: var(--text-muted);
+
+  color: #94A3B8;
+
   letter-spacing: 0.06em;
+
   margin-bottom: 8px;
+
   text-transform: uppercase;
 }
 
 .detect-row {
   display: flex;
+
   justify-content: space-between;
   align-items: center;
+
   margin-bottom: 5px;
+
   font-size: 11.5px;
 }
-.detect-lbl { color: var(--text-secondary); }
+
+.detect-lbl {
+  color: #94A3B8;
+}
+
 .detect-val {
   font-family: 'Fira Code', monospace;
+
   font-weight: 600;
-  color: var(--navy);
+
+  color: #E6EDF5;
 }
-.detect-val.confirmed { color: var(--teal); }
-.detect-val.high      { color: var(--red); }
+
+.detect-val.confirmed {
+  color: #2DD4BF;
+}
+
+.detect-val.high {
+  color: #F87171;
+}
+
+/* Confidence bar */
 
 .detect-conf-bar {
-  width: 100%; height: 5px;
-  background: var(--border);
+  width: 100%;
+  height: 5px;
+
+  background:
+    rgba(148, 163, 184, 0.18);
+
   border-radius: 3px;
+
   margin-top: 7px;
+
   overflow: hidden;
 }
+
 .detect-conf-fill {
   height: 100%;
+
   border-radius: 3px;
-  background: linear-gradient(to right, var(--blue), var(--teal));
-  transition: width 0.5s ease;
+
+  background:
+    linear-gradient(
+      to right,
+      #38BDF8,
+      #22D3EE,
+      #2DD4BF
+    );
+
+  transition:
+    width 0.5s ease;
 }
 
-/* ── Map control buttons ── */
+/* ============================================================
+   MAP CONTROL BUTTONS
+   ============================================================ */
+
 .map-btns {
   position: absolute;
-  bottom: calc(var(--replay-bar-h) + 14px);
+
+  bottom:
+    calc(var(--replay-bar-h) + 14px);
+
   left: 14px;
+
   display: flex;
+
   flex-direction: column;
+
   gap: 5px;
+
   z-index: 10;
 }
 
 .map-btn {
-  width: 30px; height: 30px;
-  background: white;
-  border: 1px solid var(--border);
+  width: 34px;
+  height: 34px;
+
+  background:
+    rgba(7, 17, 31, 0.88);
+
+  border:
+    1px solid rgba(148, 163, 184, 0.20);
+
   border-radius: 7px;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-size: 15px;
-  transition: all 0.15s;
-  box-shadow: var(--shadow-sm);
-  user-select: none;
-}
-.map-btn:hover {
-  border-color: var(--blue);
-  color: var(--blue);
-  box-shadow: var(--shadow-md);
-}
 
-/* ── Map attribution ── */
-.map-attr {
-  position: absolute;
-  bottom: calc(var(--replay-bar-h) + 10px);
-  right: 14px;
-  font-size: 10px;
-  font-family: 'Fira Code', monospace;
-  color: rgba(30,58,95,0.55);
-  background: rgba(255,255,255,0.82);
-  padding: 3px 8px;
-  border-radius: 4px;
-  z-index: 10;
-  letter-spacing: 0.02em;
-  border: 1px solid rgba(216,227,238,0.8);
-  backdrop-filter: blur(4px);
-}
-
-/* ── Replay / timeline bar ── */
-.replay-bar {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: var(--replay-bar-h);
-  background: rgba(255,255,255,0.97);
-  border-top: 1px solid var(--border);
-  padding: 0 16px;
   display: flex;
   align-items: center;
+  justify-content: center;
+
+  cursor: pointer;
+
+  color: #CBD5E1;
+
+  font-size: 15px;
+
+  transition:
+    all 0.15s ease;
+
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.25);
+
+  user-select: none;
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.map-btn:hover {
+  border-color:
+    rgba(34, 211, 238, 0.55);
+
+  color: #22D3EE;
+
+  background:
+    rgba(16, 34, 56, 0.95);
+
+  box-shadow:
+    0 8px 22px rgba(0, 0, 0, 0.30);
+}
+
+.map-btn:active {
+  transform: scale(0.95);
+}
+
+/* ============================================================
+   MAP ATTRIBUTION / SOURCE
+   ============================================================ */
+
+.map-attr {
+  position: absolute;
+
+  bottom:
+    calc(var(--replay-bar-h) + 10px);
+
+  right: 14px;
+
+  font-size: 9px;
+
+  font-family: 'Fira Code', monospace;
+
+  color: #7F9BB0;
+
+  background:
+    rgba(7, 17, 31, 0.78);
+
+  padding: 4px 8px;
+
+  border-radius: 4px;
+
+  z-index: 10;
+
+  letter-spacing: 0.02em;
+
+  border:
+    1px solid rgba(148, 163, 184, 0.16);
+
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ============================================================
+   REPLAY / TIMELINE BAR
+   ============================================================ */
+
+.replay-bar {
+  position: absolute;
+
+  bottom: 0;
+  left: 0;
+  right: 0;
+
+  height: var(--replay-bar-h);
+
+  background:
+    rgba(7, 17, 31, 0.94);
+
+  border-top:
+    1px solid rgba(34, 211, 238, 0.14);
+
+  padding: 0 16px;
+
+  display: flex;
+
+  align-items: center;
+
   gap: 12px;
+
   z-index: 15;
-  box-shadow: 0 -2px 8px rgba(30,58,95,0.06);
+
+  box-shadow:
+    0 -8px 25px rgba(0, 0, 0, 0.18);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .rp-lbl {
   font-size: 10px;
+
   font-weight: 600;
-  color: var(--text-muted);
+
+  color: #94A3B8;
+
   letter-spacing: 0.06em;
+
   white-space: nowrap;
+
   text-transform: uppercase;
 }
 
 .rp-btn {
-  width: 28px; height: 28px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  width: 28px;
+  height: 28px;
+
+  background:
+    rgba(16, 34, 56, 0.9);
+
+  border:
+    1px solid rgba(148, 163, 184, 0.20);
+
   border-radius: 6px;
-  display: flex; align-items: center; justify-content: center;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
   cursor: pointer;
-  color: var(--text-secondary);
+
+  color: #CBD5E1;
+
   font-size: 12px;
-  transition: all 0.15s;
+
+  transition:
+    all 0.15s ease;
+
   flex-shrink: 0;
+
   user-select: none;
 }
-.rp-btn:hover   { border-color: var(--blue); color: var(--blue); background: var(--blue-light); }
-.rp-btn.playing { background: var(--blue); border-color: var(--blue); color: white; }
 
-/* Timeline slider */
+.rp-btn:hover {
+  border-color:
+    rgba(34, 211, 238, 0.50);
+
+  color: #22D3EE;
+
+  background:
+    rgba(22, 52, 76, 0.95);
+}
+
+.rp-btn.playing {
+  background:
+    #0891B2;
+
+  border-color:
+    #22D3EE;
+
+  color: white;
+}
+
+/* ============================================================
+   TIMELINE SLIDER
+   ============================================================ */
+
 .tl-wrap {
   flex: 1;
+
   position: relative;
+
   padding-top: 14px;
 }
 
 .tl-labels {
   position: absolute;
-  top: 0; left: 0; right: 0;
+
+  top: 0;
+  left: 0;
+  right: 0;
+
   display: flex;
+
   justify-content: space-between;
+
   font-size: 9.5px;
+
   font-family: 'Fira Code', monospace;
-  color: var(--text-muted);
+
+  color: #64748B;
+
   pointer-events: none;
 }
 
 .tl-track {
-  width: 100%; height: 4px;
-  background: var(--border);
+  width: 100%;
+  height: 4px;
+
+  background:
+    rgba(148, 163, 184, 0.20);
+
   border-radius: 2px;
+
   position: relative;
+
   cursor: pointer;
 }
+
 .tl-fill {
   height: 100%;
-  background: linear-gradient(to right, var(--blue), var(--red));
+
+  background:
+    linear-gradient(
+      to right,
+      #38BDF8,
+      #22D3EE,
+      #F87171
+    );
+
   border-radius: 2px;
+
   pointer-events: none;
-  transition: width 0.05s linear;
+
+  transition:
+    width 0.05s linear;
 }
+
 .tl-thumb {
   position: absolute;
+
   top: 50%;
-  transform: translate(-50%, -50%);
-  width: 14px; height: 14px;
+
+  transform:
+    translate(-50%, -50%);
+
+  width: 14px;
+  height: 14px;
+
   border-radius: 50%;
-  background: white;
-  border: 2.5px solid var(--blue);
+
+  background:
+    #E6EDF5;
+
+  border:
+    2.5px solid #22D3EE;
+
   pointer-events: none;
-  box-shadow: var(--shadow-sm);
-  transition: left 0.05s linear;
+
+  box-shadow:
+    0 0 0 3px rgba(34, 211, 238, 0.12),
+    0 3px 10px rgba(0, 0, 0, 0.35);
+
+  transition:
+    left 0.05s linear;
 }
+
+/* ============================================================
+   REPLAY SPEED
+   ============================================================ */
 
 .rp-speed {
   font-size: 11px;
+
   font-family: 'Fira Code', monospace;
+
   font-weight: 600;
-  color: var(--navy);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+
+  color: #CBD5E1;
+
+  background:
+    rgba(16, 34, 56, 0.90);
+
+  border:
+    1px solid rgba(148, 163, 184, 0.20);
+
   border-radius: 5px;
+
   padding: 4px 8px;
+
   cursor: pointer;
+
   flex-shrink: 0;
-  transition: all 0.15s;
+
+  transition:
+    all 0.15s ease;
+
   user-select: none;
 }
-.rp-speed:hover { border-color: var(--blue); color: var(--blue); }
+
+.rp-speed:hover {
+  border-color:
+    rgba(34, 211, 238, 0.50);
+
+  color: #22D3EE;
+}
+
+/* ============================================================
+   REPLAY DATE
+   ============================================================ */
 
 .rp-date {
   font-size: 10.5px;
+
   font-family: 'Fira Code', monospace;
+
   font-weight: 500;
-  background: var(--navy);
+
+  background:
+    #102238;
+
   color: #E8F4FF;
+
   padding: 4px 9px;
+
   border-radius: 5px;
+
   white-space: nowrap;
+
   flex-shrink: 0;
+
   min-width: 100px;
+
   text-align: center;
+
+  border:
+    1px solid rgba(34, 211, 238, 0.12);
 }
 
-/* ── Grad-CAM in XAI tab ── */
+/* ============================================================
+   GRAD-CAM IN XAI TAB
+   ============================================================ */
+
 .gradcam-box {
   border-radius: 8px;
+
   overflow: hidden;
-  border: 1.5px solid var(--border);
+
+  border:
+    1.5px solid var(--border);
+
   margin-bottom: 11px;
+
   position: relative;
 }
+
 .gradcam-inner {
-  width: 100%; height: 130px;
-  background: linear-gradient(135deg, #1E3A5F 0%, #2C5282 50%, #1a3a6b 100%);
+  width: 100%;
+  height: 130px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #1E3A5F 0%,
+      #2C5282 50%,
+      #1a3a6b 100%
+    );
+
   position: relative;
+
   overflow: hidden;
 }
+
 .cloud-sim {
-  position: absolute; inset: 0;
+  position: absolute;
+
+  inset: 0;
+
   background:
-    radial-gradient(circle at 55% 45%, rgba(255,255,255,0.2) 0%, transparent 22%),
-    radial-gradient(ellipse 65% 48% at 55% 45%, rgba(150,190,230,0.25) 0%, transparent 55%),
-    radial-gradient(circle at 28% 58%, rgba(200,225,255,0.12) 0%, transparent 28%);
-  animation: cld-anim 7s ease-in-out infinite alternate;
+    radial-gradient(
+      circle at 55% 45%,
+      rgba(255,255,255,0.2) 0%,
+      transparent 22%
+    ),
+
+    radial-gradient(
+      ellipse 65% 48% at 55% 45%,
+      rgba(150,190,230,0.25) 0%,
+      transparent 55%
+    ),
+
+    radial-gradient(
+      circle at 28% 58%,
+      rgba(200,225,255,0.12) 0%,
+      transparent 28%
+    );
+
+  animation:
+    cld-anim 7s ease-in-out infinite alternate;
 }
+
 .heat-layer {
-  position: absolute; inset: 0;
-  background: radial-gradient(
-    ellipse 58% 42% at 55% 44%,
-    rgba(230,57,70,0.55) 0%,
-    rgba(244,162,97,0.35) 28%,
-    rgba(0,119,182,0.18) 58%,
-    transparent 78%
-  );
+  position: absolute;
+
+  inset: 0;
+
+  background:
+    radial-gradient(
+      ellipse 58% 42% at 55% 44%,
+      rgba(230,57,70,0.55) 0%,
+      rgba(244,162,97,0.35) 28%,
+      rgba(0,119,182,0.18) 58%,
+      transparent 78%
+    );
+
   mix-blend-mode: screen;
 }
+
 .gc-badge {
-  position: absolute; top: 7px; right: 7px;
+  position: absolute;
+
+  top: 7px;
+  right: 7px;
+
   font-size: 9px;
-  background: rgba(255,255,255,0.18);
-  border: 1px solid rgba(255,255,255,0.35);
+
+  background:
+    rgba(255,255,255,0.18);
+
+  border:
+    1px solid rgba(255,255,255,0.35);
+
   color: white;
+
   padding: 2px 7px;
+
   border-radius: 4px;
+
   font-weight: 700;
+
   letter-spacing: 0.06em;
+
   backdrop-filter: blur(4px);
 }

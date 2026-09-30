@@ -51,7 +51,11 @@
         <div class="sat-dot warn"></div>ERA5
       </div>
       <div class="alert-badge" id="alertBadge">⚠ VSCS ACTIVE</div>
-      <div class="clock-display" id="clock">UTC 00:00:00</div>
+      <div class="time-display">
+        <span id="istTime">IST --:--:--</span>
+        <span class="time-divider">|</span>
+        <span id="utcTime">UTC --:--:--</span>
+      </div>
     </div>
   </header>
 
@@ -307,7 +311,7 @@
 
   <!-- Toast notification (injected by ui.js) -->
   <div id="toast" class="toast" aria-live="polite"></div>
-
+<script src="./js/config.local.js"></script>
   <!-- JavaScript modules — load order matters -->
   <script src="js/data.js"></script>
   <script src="js/map.js"></script>
