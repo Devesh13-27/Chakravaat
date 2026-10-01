@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -138,3 +140,57 @@ class DataSource(_Base):
 class Timeline(_Base):
     dates: list[str]
     tick_labels: list[str]
+
+
+class HistoricalStormSummary(BaseModel):
+    sid: str
+    name: str
+    season: int
+    basin: str
+    start_time: datetime
+    end_time: datetime
+    n_points: int
+    max_wind_kt: float | None = None
+    min_pressure_hpa: float | None = None
+    max_imd_stage: str | None = None
+    made_landfall: bool
+
+
+class HistoricalStormPage(BaseModel):
+    total: int
+    items: list[HistoricalStormSummary]
+
+
+class NearbyStorm(HistoricalStormSummary):
+    min_distance_km: float
+
+
+class HistoricalPoint(BaseModel):
+    observed_at: datetime
+    lat: float
+    lon: float
+    wind_kt: float | None = None
+    wind_source: str | None = None
+    pressure_hpa: float | None = None
+    pressure_source: str | None = None
+    imd_grade: str | None = None
+    imd_stage: str | None = None
+    nature: str | None = None
+    track_type: str | None = None
+    storm_speed_kt: float | None = None
+    storm_dir_deg: float | None = None
+    dist2land_km: float | None = None
+
+
+class HistoricalStormDetail(HistoricalStormSummary):
+    points: list[HistoricalPoint]
+
+
+class HistoryStats(BaseModel):
+    storms: int
+    first_season: int | None
+    last_season: int | None
+    track_points: int
+    storms_with_intensity: int
+    latest_fix: datetime | None
+    source: str

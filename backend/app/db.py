@@ -11,5 +11,10 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 # Unset -> the API serves the JSON seed files instead (no database needed).
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True) if DATABASE_URL else None
+# Pin the session to UTC so timestamptz values are returned as UTC ('Z'), not the server's local offset.
+engine = (
+    create_engine(DATABASE_URL, pool_pre_ping=True, connect_args={"options": "-c timezone=UTC"})
+    if DATABASE_URL
+    else None
+)
 SessionLocal = sessionmaker(engine, expire_on_commit=False) if engine else None

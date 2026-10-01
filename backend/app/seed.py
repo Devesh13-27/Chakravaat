@@ -2,7 +2,8 @@
 
     python -m app.seed
 
-WARNING: drops and recreates every table, so it wipes anything ingested later.
+Only the demo tables are dropped and recreated; ingested historical data
+(historical_storms / historical_track_points) is left untouched.
 """
 
 from sqlalchemy import func, text
@@ -31,7 +32,10 @@ def seed() -> None:
 
     with db.engine.begin() as conn:
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis"))
-    Base.metadata.drop_all(db.engine)
+    demo_tables = [
+        t for name, t in Base.metadata.tables.items() if not name.startswith("historical_")
+    ]
+    Base.metadata.drop_all(db.engine, tables=demo_tables)
     Base.metadata.create_all(db.engine)
 
     with Session(db.engine) as session:

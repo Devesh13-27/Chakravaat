@@ -1,0 +1,167 @@
+CHAKRAVAAT - HOW TO RUN
+=======================
+
+Three parts:
+  Frontend  static HTML/CSS/JS             http://localhost:8080
+  Backend   FastAPI (Python)               http://127.0.0.1:8000   (docs: /docs)
+  Database  PostgreSQL 17 + PostGIS        127.0.0.1:5433          (optional)
+
+All commands are run from the project root (the folder containing this file),
+in PowerShell or Git Bash, unless stated otherwise.
+
+
+-------------------------------------------------------------------
+QUICK START - ONE COMMAND (starts everything)
+-------------------------------------------------------------------
+
+    npm run dev
+
+What it does:
+  1. Starts PostgreSQL on port 5433 (only if it is installed and backend/.env exists)
+  2. Starts the FastAPI backend on port 8000
+  3. Starts the frontend on port 8080 and opens it in your browser
+  Press Ctrl+C once to stop everything (it also stops the database if it started it).
+
+Without npm, the same thing:
+
+    powershell -ExecutionPolicy Bypass -File scripts/dev.ps1
+
+Options (only with the powershell form):
+    -NoBrowser          do not open the browser
+    -ExitAfter 60       stop automatically after 60 seconds (smoke tests)
+
+If the database is not set up, the app still works: the API serves its built-in
+JSON data (GET http://127.0.0.1:8000/api/v1/health shows "storage": "json" or "postgis").
+If the backend is not running at all, the frontend falls back to demo data
+and shows a "Backend offline" message.
+
+
+-------------------------------------------------------------------
+ONE-TIME SETUP
+-------------------------------------------------------------------
+
+Requirements: Node.js, Python 3.11+ (3.12 used here), Git.
+
+1) Backend virtual environment
+
+    cd backend
+    python -m venv .venv
+    .venv\Scripts\python.exe -m pip install -r requirements.txt
+    cd ..
+
+2) Google Maps key (the map will not load without it)
+
+    $env:GOOGLE_MAPS_API_KEY = "your-key"      # PowerShell
+    npm run build                               # writes js/config.local.js
+
+   (js/config.local.js is git-ignored. If it already exists you can skip this.)
+
+3) Database (optional, free, no admin rights needed)
+
+   a. Download and unzip into  C:\Users\<you>\pg-chakravaat :
+      - PostgreSQL binaries:
+        https://get.enterprisedb.com/postgresql/postgresql-17.6-1-windows-x64-binaries.zip
+        (creates the pgsql folder)
+      - PostGIS bundle:
+        https://download.osgeo.org/postgis/windows/pg17/postgis-bundle-pg17-3.6.2x64.zip
+        copy its bin, lib and share folders into pgsql\  (merge, overwrite)
+
+   b. Create the cluster (once), from C:\Users\<you>\pg-chakravaat :
+
+        pgsql\bin\initdb.exe -D data -U postgres --auth=trust --encoding=UTF8 --locale=C
+
+   c. Start it, create the database, enable PostGIS (from the project root):
+
+        npm run db:start
+        %USERPROFILE%\pg-chakravaat\pgsql\bin\createdb.exe -h 127.0.0.1 -p 5433 -U postgres chakravaat
+        %USERPROFILE%\pg-chakravaat\pgsql\bin\psql.exe -h 127.0.0.1 -p 5433 -U postgres -d chakravaat -c "CREATE EXTENSION postgis;"
+
+   d. Point the backend at it and load the demo data:
+
+        copy backend\.env.example backend\.env
+        npm run db:seed
+
+      db:seed resets only the demo tables (storms, layers, feeds ...). It does not
+      touch the historical archive loaded in step e.
+
+   e. Load the real historical data (IBTrACS, North Indian Ocean, 1842-present):
+
+        npm run db:ingest
+
+      Downloads ~28 MB from NOAA on the first run (saved to backend/data/raw/,
+      git-ignored), then loads ~1,900 storms / ~63,000 track points. Safe to re-run:
+      it replaces the archive each time. Run it again whenever you want newer data.
+
+   To use a different install folder, set the PG_HOME environment variable.
+
+
+-------------------------------------------------------------------
+RUNNING THE PARTS SEPARATELY (three terminals)
+-------------------------------------------------------------------
+
+Terminal 1 - database (skip if not using it)
+    npm run db:start
+    npm run db:stop          # when finished
+
+Terminal 2 - backend (auto-reloads on code changes)
+    npm run dev:backend
+  or
+    cd backend
+    .venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
+
+Terminal 3 - frontend
+    npm run dev:frontend
+  or
+    node scripts/serve.js . 8080
+
+Then open http://localhost:8080
+
+
+-------------------------------------------------------------------
+USEFUL URLS
+-------------------------------------------------------------------
+    http://localhost:8080                         the app
+    http://127.0.0.1:8000/docs                    interactive API docs
+    http://127.0.0.1:8000/api/v1/health           status + storage backend
+    http://127.0.0.1:8000/api/v1/storms/active    active storms (JSON)
+
+  Historical archive (needs the database + db:ingest):
+    /api/v1/history/stats                                       totals and date range
+    /api/v1/history/storms?season_from=2020&min_imd_stage=vscs  filter/page storms
+    /api/v1/history/storms/near?lat=19.07&lon=72.88&radius_km=200
+                                                                storms that passed near a point
+    /api/v1/history/storms/2023156N10067                        one storm with its full track
+  Units follow the source: wind in knots, pressure in hPa, times in UTC.
+  Each wind/pressure value carries its source (wmo / newdelhi / usa); IMD uses
+  3-minute winds and JTWC ("usa") 1-minute winds, so they are not interchangeable.
+
+
+-------------------------------------------------------------------
+TROUBLESHOOTING
+-------------------------------------------------------------------
+"Port 8000 / 8080 is already in use"
+    Another copy is still running. Close that terminal, or find the process:
+        Get-NetTCPConnection -LocalPort 8000 -State Listen
+        Stop-Process -Id <OwningProcess> -Force
+
+"Backend virtualenv not found"
+    Do ONE-TIME SETUP step 1.
+
+Map shows "MAP INITIALIZATION FAILED"
+    js/config.local.js is missing or the API key is invalid / lacks the
+    Maps JavaScript API. Redo step 2. Check the browser console for details.
+
+"npm run dev" is blocked by execution policy
+    The npm script already passes -ExecutionPolicy Bypass. If you run the
+    .ps1 directly, use the full command shown under QUICK START.
+
+Database will not start
+    Read C:\Users\<you>\pg-chakravaat\postgres.log
+    A leftover postmaster.pid in the data folder after a crash can be deleted
+    if no postgres.exe process is running.
+
+Frontend shows "Backend offline - showing demo data"
+    The API is not running or not on port 8000. Start it (or use npm run dev).
+    To use a different API address, set window.CHAKRAVAAT_CONFIG.apiBaseUrl
+    in js/config.local.js (note: npm run build regenerates that file and
+    would remove the addition).

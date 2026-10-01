@@ -1,0 +1,4 @@
+# Extra packages for training / running the forecast model (install on top of requirements.txt).
+# On Windows the PyPI build of torch is the CPU build, which is plenty for this dataset.
+torch>=2.4
+numpy>=1.26

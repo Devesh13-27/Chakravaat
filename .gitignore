@@ -3,3 +3,6 @@ js/config.local.js
 backend/.venv/
 __pycache__/
 *.pyc
+
+backend/data/raw/
+backend/artifacts/*.pt
