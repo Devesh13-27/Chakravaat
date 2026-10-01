@@ -22,7 +22,7 @@ def ensemble_predict(states, hidden, s: Samples, base: np.ndarray):
     x = torch.from_numpy(s.x)
     with torch.no_grad():
         for st in states:
-            m = GRUForecaster(data.N_FEATURES, len(LEADS), hidden=hidden)
+            m = GRUForecaster(s.x.shape[-1], len(LEADS), hidden=hidden)
             m.load_state_dict(st)
             m.eval()
             t, w = m(x)
@@ -52,12 +52,14 @@ class Forecaster:
         self.ridge = Ridge.from_state(ckpt["ridge"])
         self.cone_data = ckpt["cone"]
         self.info = ckpt["info"]
+        self.n_features = ckpt["n_features"]  # 14 = with environment inputs, 10 = without
 
     @classmethod
     def load(cls, path: Path = ARTIFACT) -> "Forecaster":
         return cls(torch.load(path, weights_only=False))
 
     def predict(self, s: Samples) -> dict:
+        s = s.with_features(self.n_features)
         base = constant_velocity_km(s, 2)
         tr_members, w_members = ensemble_predict(self.states, self.hidden, s, base)
         r_track, r_wind = ridge_predict(self.ridge, s, base)

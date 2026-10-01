@@ -1,11 +1,12 @@
 """Turn the IBTrACS archive in PostGIS into supervised (history window -> future) samples."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import numpy as np
 from sqlalchemy import text
 
 from .. import db
+from .env import EnvFields
 from .geo import to_km
 
 STEP_H = 6  # fixes are used on the 6-hourly synoptic grid (00/06/12/18 UTC)
@@ -26,7 +27,8 @@ OFFICIAL_SOURCES = ("wmo", "newdelhi")
 # only grazed the region; a sample is kept only if its last observed fix lies inside this box.
 REGION = {"lat": (-5.0, 35.0), "lon": (40.0, 110.0)}
 
-N_FEATURES = 10
+BASE_FEATURES = 10  # position, motion, wind, pressure, season  (the 'no environment' model)
+N_FEATURES = 14  # + SST, shear and a known-flag for each
 
 FIXES_SQL_TEMPLATE = (
     """
@@ -51,6 +53,8 @@ class Samples:
     win_lat: np.ndarray  # (N, H) raw history, for the baselines
     win_lon: np.ndarray
     win_wind: np.ndarray  # NaN where unknown
+    win_sst: np.ndarray  # (N, H) deg C at each history fix, NaN where unknown (e.g. over land)
+    win_shear: np.ndarray  # (N, H) 200-850 hPa shear in m/s, NaN where unknown
     tgt_lat: np.ndarray  # (N, L) truth at each lead, NaN where unavailable
     tgt_lon: np.ndarray
     tgt_wind: np.ndarray
@@ -70,8 +74,20 @@ class Samples:
     def wind0(self):
         return self.win_wind[:, -1]
 
+    @property
+    def sst0(self):
+        return self.win_sst[:, -1]
+
+    @property
+    def shear0(self):
+        return self.win_shear[:, -1]
+
     def __len__(self):
         return len(self.sid)
+
+    def with_features(self, n: int) -> "Samples":
+        """Same samples exposing only the first n input features (n=BASE_FEATURES drops the environment)."""
+        return replace(self, x=self.x[..., :n])
 
     def subset(self, mask: np.ndarray) -> "Samples":
         return Samples(**{k: getattr(self, k)[mask] for k in self.__dataclass_fields__})
@@ -96,7 +112,23 @@ def load_fixes(sid: str | None = None) -> dict:
         d["lon"].append(lon)
         d["wind"].append(np.nan if wind is None else wind)
         d["pres"].append(np.nan if pres is None else pres)
+    attach_environment(storms)
     return storms
+
+
+def attach_environment(storms: dict) -> None:
+    """Add per-fix SST and shear (NaN where the cached fields don't cover a fix)."""
+    sids = list(storms)
+    t = np.concatenate([storms[s]["t"] for s in sids])
+    lat = np.concatenate([storms[s]["lat"] for s in sids])
+    lon = np.concatenate([storms[s]["lon"] for s in sids])
+    sst, shear = EnvFields().sample(t, lat, lon)
+    start = 0
+    for sid in sids:
+        n = len(storms[sid]["t"])
+        storms[sid]["sst"] = sst[start : start + n].tolist()
+        storms[sid]["shear"] = shear[start : start + n].tolist()
+        start += n
 
 
 def _grid(d: dict):
@@ -105,19 +137,21 @@ def _grid(d: dict):
     idx = ((t - t[0]) / np.timedelta64(STEP_H, "h")).astype(int)
     n = idx[-1] + 1
     out = {}
-    for key in ("lat", "lon", "wind", "pres"):
+    for key in ("lat", "lon", "wind", "pres", "sst", "shear"):
         arr = np.full(n, np.nan)
-        arr[idx] = d[key]
+        arr[idx] = d.get(key, [np.nan] * len(idx))
         out[key] = arr
     return t[0], out
 
 
-def _features(lat, lon, wind, pres, t_hours):
+def _features(lat, lon, wind, pres, sst, shear, t_hours):
     """(H, F) feature block for one window. Missing wind/pressure -> 0 plus an explicit mask flag."""
     dlat = np.concatenate([[0.0], np.diff(lat)])
     dlon = np.concatenate([[0.0], np.diff(lon)])
     wmask = ~np.isnan(wind)
     pmask = ~np.isnan(pres)
+    smask = ~np.isnan(sst)
+    hmask = ~np.isnan(shear)
     doy = (t_hours.astype("datetime64[D]") - t_hours.astype("datetime64[Y]").astype("datetime64[D]")).astype(float)
     ang = 2 * np.pi * doy / 365.25
     return np.stack(
@@ -132,6 +166,10 @@ def _features(lat, lon, wind, pres, t_hours):
             pmask.astype(float),
             np.sin(ang),
             np.cos(ang),
+            np.where(smask, sst - 28.0, 0.0) / 3.0,  # warm-water supply, centred on 28 C
+            smask.astype(float),
+            np.where(hmask, shear, 0.0) / 10.0,  # 10 m/s ~ the usual "hostile" shear threshold
+            hmask.astype(float),
         ],
         axis=1,
     )
@@ -139,7 +177,7 @@ def _features(lat, lon, wind, pres, t_hours):
 
 def build_samples(storms: dict | None = None, require_targets: bool = True) -> Samples:
     storms = storms if storms is not None else load_fixes()
-    cols = {k: [] for k in ("x", "win_lat", "win_lon", "win_wind", "tgt_lat", "tgt_lon", "tgt_wind", "sid", "season", "time")}
+    cols = {k: [] for k in ("x", "win_lat", "win_lon", "win_wind", "win_sst", "win_shear", "tgt_lat", "tgt_lon", "tgt_wind", "sid", "season", "time")}
     h, max_lead = HIST_STEPS, max(LEADS)
 
     for sid, d in storms.items():
@@ -161,10 +199,12 @@ def build_samples(storms: dict | None = None, require_targets: bool = True) -> S
             if require_targets and np.isnan(tl).all():  # nothing to learn from
                 continue
             t_hours = t0 + np.arange(i - h + 1, i + 1) * np.timedelta64(STEP_H, "h")
-            cols["x"].append(_features(g["lat"][win], g["lon"][win], g["wind"][win], g["pres"][win], t_hours))
+            cols["x"].append(_features(g["lat"][win], g["lon"][win], g["wind"][win], g["pres"][win], g["sst"][win], g["shear"][win], t_hours))
             cols["win_lat"].append(g["lat"][win])
             cols["win_lon"].append(g["lon"][win])
             cols["win_wind"].append(g["wind"][win])
+            cols["win_sst"].append(g["sst"][win])
+            cols["win_shear"].append(g["shear"][win])
             cols["tgt_lat"].append(tl)
             cols["tgt_lon"].append(np.array([g["lon"][j] if j < n else np.nan for j in targets]))
             cols["tgt_wind"].append(np.array([g["wind"][j] if j < n else np.nan for j in targets]))
@@ -177,6 +217,8 @@ def build_samples(storms: dict | None = None, require_targets: bool = True) -> S
         win_lat=np.array(cols["win_lat"]),
         win_lon=np.array(cols["win_lon"]),
         win_wind=np.array(cols["win_wind"]),
+        win_sst=np.array(cols["win_sst"]),
+        win_shear=np.array(cols["win_shear"]),
         tgt_lat=np.array(cols["tgt_lat"]),
         tgt_lon=np.array(cols["tgt_lon"]),
         tgt_wind=np.array(cols["tgt_wind"]),

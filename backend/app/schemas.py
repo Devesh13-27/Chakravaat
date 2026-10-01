@@ -222,6 +222,8 @@ class ForecastFrame(BaseModel):
     lat: float
     lon: float
     wind_kt: float | None = None
+    sst_c: float | None = None  # sea-surface temperature at the storm centre when the forecast was issued
+    shear_ms: float | None = None  # 200-850 hPa wind shear (m/s)
     forecast: list[ForecastLead]
     actual: list[ActualLead | None] | None = None  # present for hindcasts
     track_error_km: list[float | None] | None = None
@@ -241,6 +243,7 @@ class HindcastResponse(BaseModel):
     data_split: str  # train | val | test | outside
     out_of_sample: bool  # true only for test seasons (never seen in training or tuning)
     model: str
+    uses_environment: bool  # whether the model was given SST / shear as inputs
     observed: list[ObservedFix]
     frames: list[ForecastFrame]
 
@@ -251,6 +254,12 @@ class FixIn(BaseModel):
     lon: float = Field(ge=-180, le=360)
     wind_kt: float | None = Field(None, ge=0, le=250, description="Official-agency (IMD/WMO) sustained wind")
     pressure_hpa: float | None = Field(None, ge=800, le=1100)
+    sst_c: float | None = Field(
+        None, ge=-5, le=40, description="Sea-surface temperature at the centre, deg C. Only used if the deployed model uses environment inputs (see GET /forecast/model: uses_environment)."
+    )
+    shear_ms: float | None = Field(
+        None, ge=0, le=100, description="200-850 hPa wind shear, m/s. Only used if the deployed model uses environment inputs."
+    )
 
     @field_validator("time")
     @classmethod
@@ -269,6 +278,7 @@ class ForecastRequest(BaseModel):
 
 class ModelCard(BaseModel):
     model: str
+    uses_environment: bool
     trained_at: str
     source: str
     splits: dict

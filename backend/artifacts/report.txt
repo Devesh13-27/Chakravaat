@@ -1,6 +1,6 @@
 CHAKRAVAAT - TRACK & INTENSITY FORECAST MODEL: EVALUATION REPORT
 ==========================================================================
-Trained: 2026-10-01 09:15 UTC   |   data: NOAA IBTrACS v04r01, North Indian Ocean file
+Trained: 2026-10-01 10:42 UTC   |   data: NOAA IBTrACS v04r01 + NOAA OISST v2.1 + NCEP/NCAR Reanalysis 1
 Split by season (no overlap): train 1980-2015 (293 storms, 4341 samples) | val 2016-2018 (27 storms) | test 2019-2025 (65 storms, 937 samples)
 Deployed model: 50/50 blend of a 5-member GRU ensemble and a ridge regression. GRU: hidden=32, weight_decay=0.001, ridge lambda=1; inputs=last 36 h of 6-hourly fixes
 Intensity: official-agency winds only (IMD/WMO); trained and scored only where the storm's current wind is known.
@@ -47,6 +47,23 @@ BLEND minus reference, mean kt with 95% CI from resampling storms (negative = bl
   vs gru          +24h:  +0.14 kt  [ -0.07,  +0.36]  -> no clear difference
   vs gru          +48h:  +0.53 kt  [ -0.14,  +1.23]  -> no clear difference
 
+ENVIRONMENT INPUTS A/B: does adding sea-surface temperature + wind shear help? (same data, splits and method)
+  Inputs added: SST (NOAA OISST) and 200-850 hPa shear (NCEP/NCAR Reanalysis 1), each with a 'known' flag.
+  Known at the forecast start on the test seasons: SST 75%, shear 100% (SST is unknown over land).
+  Chosen on VALIDATION seasons only (lower is better): without 1.8419  with 1.8602  -> deployed: WITHOUT environment
+
+  TRACK, mean km (blend)        without        with   with minus without [95% CI, storms resampled]
+  + 6h   937             35          35     +0.4 km [  +0.1,   +0.6]  -> with env worse
+  +12h   872             69          70     +0.6 km [  -0.2,   +1.4]  -> no clear difference
+  +24h   759            140         142     +1.5 km [  -0.8,   +3.6]  -> no clear difference
+  +48h   567            297         303     +5.7 km [  -0.7,  +11.5]  -> no clear difference
+
+  INTENSITY, mean abs kt (blend) without        with   with minus without [95% CI, storms resampled]
+  + 6h   780            3.5         3.4    -0.06 kt [ -0.17,  +0.06]  -> no clear difference
+  +12h   716            6.3         6.1    -0.25 kt [ -0.49,  -0.02]  -> with env better
+  +24h   608           11.5        11.2    -0.24 kt [ -0.66,  +0.19]  -> no clear difference
+  +48h   425           18.0        17.8    -0.22 kt [ -1.29,  +0.89]  -> no clear difference
+
 UNCERTAINTY CONE: error radius per lead, set from validation-season errors, then checked on the unseen test seasons
   target 67% / 90% of true positions inside; 'got' is the share actually inside on the test seasons
   track 67%: +6h    36 km (got 64%)   +12h    71 km (got 62%)   +24h   150 km (got 62%)   +48h   332 km (got 65%)
@@ -86,5 +103,5 @@ CASE STUDY - MOCHA 2023 (test seasons; model never trained on this storm)
 CAVEATS
   * Small data: a few hundred training storms. Treat differences inside the confidence intervals as noise.
   * Forecasts are issued from best-track positions (post-analysed), not real-time advisories, so real-time skill will be lower.
-  * No environmental fields (SST, shear, steering flow) are used yet - those need ERA5 (a later step).
+  * Environment inputs are coarse (SST 0.5 deg daily; shear from 2.5 deg daily reanalysis means), not ERA5; steering flow is not used.
   * Not an operational forecast; does not replace IMD advisories.

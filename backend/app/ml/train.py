@@ -69,7 +69,7 @@ def masked_loss(track, wind, y_tr, m_tr, y_w, m_w):
 def train_member(seed, hidden, weight_decay, tr, va, epochs, patience, batch=128, lr=2e-3):
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
-    model = GRUForecaster(data.N_FEATURES, len(LEADS), hidden=hidden)
+    model = GRUForecaster(tr["x"].shape[-1], len(LEADS), hidden=hidden)
     opt = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=weight_decay)
     best_val, best_state, best_ep, bad = float("inf"), None, 0, 0
     n = len(tr["x"])
@@ -202,7 +202,7 @@ def case_study(test: Samples, sid: str, preds: dict, spread_tr: np.ndarray) -> l
     return lines
 
 
-def fmt_report(meta, ev, spear, member_stats, cases, cone) -> str:
+def fmt_report(meta, ev, spear, member_stats, cases, cone, ab) -> str:
     L = []
     add = L.append
     add("CHAKRAVAAT - TRACK & INTENSITY FORECAST MODEL: EVALUATION REPORT")
@@ -240,6 +240,9 @@ def fmt_report(meta, ev, spear, member_stats, cases, cone) -> str:
             verdict = "blend better" if hi < 0 else ("blend worse" if lo > 0 else "no clear difference")
             add(f"  vs {ref:<12} +{h:>2}h: {m:+6.2f} kt  [{lo:+6.2f}, {hi:+6.2f}]  -> {verdict}")
     add("")
+    for line in fmt_ab(ab):
+        add(line)
+    add("")
     add("UNCERTAINTY CONE: error radius per lead, set from validation-season errors, then checked on the unseen test seasons")
     add("  target 67% / 90% of true positions inside; 'got' is the share actually inside on the test seasons")
     for key, unit, fmt in (("track_km", "km", "{:>5.0f}"), ("wind_kt", "kt", "{:>5.1f}")):
@@ -262,12 +265,73 @@ def fmt_report(meta, ev, spear, member_stats, cases, cone) -> str:
     add("CAVEATS")
     add("  * Small data: a few hundred training storms. Treat differences inside the confidence intervals as noise.")
     add("  * Forecasts are issued from best-track positions (post-analysed), not real-time advisories, so real-time skill will be lower.")
-    add("  * No environmental fields (SST, shear, steering flow) are used yet - those need ERA5 (a later step).")
+    add("  * Environment inputs are coarse (SST 0.5 deg daily; shear from 2.5 deg daily reanalysis means), not ERA5; steering flow is not used.")
     add("  * Not an operational forecast; does not replace IMD advisories.")
     return "\n".join(L)
 
 
 # ── main ─────────────────────────────────────────────────────────────────────
+
+
+def fit_variant(name, n_feat, parts, grid, n_seeds, epochs, patience):
+    """Train the full pipeline (GRU grid search + ensemble + ridge) on the first n_feat input features."""
+    print(f"\n=== variant '{name}' ({n_feat} input features)")
+    train, val = parts["train"].with_features(n_feat), parts["val"].with_features(n_feat)
+    p_tr, p_va = prepare(train), prepare(val)
+
+    scores = []
+    for hidden, wd in grid:
+        v, _, ep = train_member(100, hidden, wd, p_tr, p_va, epochs, patience)
+        scores.append((v, hidden, wd))
+        print(f"  grid hidden={hidden:<3} wd={wd:g}: val loss {v:.4f} (best epoch {ep})")
+    _, hidden, wd = min(scores)
+    print(f"  selected hidden={hidden}, weight_decay={wd:g}")
+
+    states = []
+    for seed in range(n_seeds):
+        v, st, ep = train_member(seed, hidden, wd, p_tr, p_va, epochs, patience)
+        states.append(st)
+        print(f"  member {seed}: val loss {v:.4f} (best epoch {ep})")
+
+    y_tr, m_tr = ridge_targets(p_tr)
+    best = None
+    for lam in (1, 10, 100, 1000, 10000):
+        r = Ridge(lam).fit(train.x, y_tr, m_tr)
+        t_pred, w_pred = ridge_predict(r, val, p_va["base"])
+        score = nm(track_error_km(val, t_pred)) / TRACK_SCALE + nm(wind_error_kt(val, w_pred)) / WIND_SCALE
+        if best is None or score < best[0]:
+            best = (score, lam, r)
+    print(f"  ridge lambda={best[1]}")
+    return {"name": name, "n_feat": n_feat, "hidden": hidden, "wd": wd, "states": states, "ridge": best[2], "lam": best[1]}
+
+
+def predict_variant(fit, s_full: Samples) -> dict:
+    s = s_full.with_features(fit["n_feat"])
+    base = constant_velocity_km(s, 2)
+    tr_m, w_m = ensemble_predict(fit["states"], fit["hidden"], s, base)
+    r_t, r_w = ridge_predict(fit["ridge"], s, base)
+    b_t, b_w = blend(tr_m.mean(0), w_m.mean(0), r_t, r_w)
+    return {"tr_members": tr_m, "w_members": w_m, "gru": (tr_m.mean(0), w_m.mean(0)), "ridge": (r_t, r_w), "blend": (b_t, b_w), "base": base}
+
+
+def fmt_ab(ab: dict) -> list[str]:
+    out = ["ENVIRONMENT INPUTS A/B: does adding sea-surface temperature + wind shear help? (same data, splits and method)"]
+    out.append("  Inputs added: SST (NOAA OISST) and 200-850 hPa shear (NCEP/NCAR Reanalysis 1), each with a 'known' flag.")
+    out.append(f"  Known at the forecast start on the test seasons: SST {ab['coverage']['sst'] * 100:.0f}%, shear {ab['coverage']['shear'] * 100:.0f}% (SST is unknown over land).")
+    out.append(f"  Chosen on VALIDATION seasons only (lower is better): without {ab['val_score']['no_env']:.4f}  with {ab['val_score']['env']:.4f}  -> deployed: {'WITH environment' if ab['deployed'] == 'env' else 'WITHOUT environment'}")
+    out.append("")
+    out.append("  TRACK, mean km (blend)        without        with   with minus without [95% CI, storms resampled]")
+    for k, h in enumerate(LEAD_HOURS):
+        m, lo, hi = ab["diff_track"][k]
+        verdict = "with env better" if hi < 0 else ("with env worse" if lo > 0 else "no clear difference")
+        out.append(f"  +{h:>2}h {ab['n_track'][k]:>5}  {ab['track']['no_env'][k]:>13.0f}  {ab['track']['env'][k]:>10.0f}   {m:+6.1f} km [{lo:+6.1f}, {hi:+6.1f}]  -> {verdict}")
+    out.append("")
+    out.append("  INTENSITY, mean abs kt (blend) without        with   with minus without [95% CI, storms resampled]")
+    for k, h in enumerate(LEAD_HOURS):
+        m, lo, hi = ab["diff_wind"][k]
+        verdict = "with env better" if hi < 0 else ("with env worse" if lo > 0 else "no clear difference")
+        out.append(f"  +{h:>2}h {ab['n_wind'][k]:>5}  {ab['wind']['no_env'][k]:>13.1f}  {ab['wind']['env'][k]:>10.1f}   {m:+6.2f} kt [{lo:+6.2f}, {hi:+6.2f}]  -> {verdict}")
+    return out
 
 
 def main():
@@ -278,74 +342,76 @@ def main():
     args = ap.parse_args()
     n_seeds = 2 if args.quick else args.seeds
     epochs, patience = (15, 5) if args.quick else (120, 12)
+    grid = [(32, 1e-3)] if args.quick else [(h, wd) for h in (16, 32, 64) for wd in (1e-4, 1e-3)]
     t_start = time.time()
 
-    print("Loading fixes and building samples ...")
+    print("Loading fixes (with environment) and building samples ...")
     samples = data.build_samples()
     parts = data.split(samples)
     train, val, test = parts["train"], parts["val"], parts["test"]
-    p_tr, p_va, p_te = prepare(train), prepare(val), prepare(test)
     print(f"  train {len(train)} / val {len(val)} / test {len(test)} samples")
 
-    # 1. choose GRU size / regularisation on the validation seasons
-    grid = [(32, 1e-3)] if args.quick else [(h, wd) for h in (16, 32, 64) for wd in (1e-4, 1e-3)]
-    scores = []
-    for hidden, wd in grid:
-        v, _, ep = train_member(100, hidden, wd, p_tr, p_va, epochs, patience)
-        scores.append((v, hidden, wd))
-        print(f"  grid hidden={hidden:<3} wd={wd:g}: val loss {v:.4f} (best epoch {ep})")
-    _, hidden, wd = min(scores)
-    print(f"Selected hidden={hidden}, weight_decay={wd:g}")
+    def cov(s):
+        return {"sst": float((~np.isnan(s.sst0)).mean()), "shear": float((~np.isnan(s.shear0)).mean())}
 
-    # 2. ensemble
-    states = []
-    for seed in range(n_seeds):
-        v, st, ep = train_member(seed, hidden, wd, p_tr, p_va, epochs, patience)
-        states.append(st)
-        print(f"  member {seed}: val loss {v:.4f} (best epoch {ep})")
+    print(f"  environment known at forecast start: train {cov(train)}  test {cov(test)}")
 
-    # 3. ridge baseline (strength chosen on validation)
-    y_tr, m_tr = ridge_targets(p_tr)
-    best = None
-    for lam in (1, 10, 100, 1000, 10000):
-        r = Ridge(lam).fit(train.x, y_tr, m_tr)
-        t_pred, w_pred = ridge_predict(r, val, p_va["base"])
-        score = nm(track_error_km(val, t_pred)) / TRACK_SCALE + nm(wind_error_kt(val, w_pred)) / WIND_SCALE
-        if best is None or score < best[0]:
-            best = (score, lam, r)
-    _, lam, ridge = best
-    print(f"Ridge lambda={lam}")
+    # Same pipeline twice: without the environment (first 10 features) and with it (all 14).
+    fits = {
+        "no_env": fit_variant("no_env", data.BASE_FEATURES, parts, grid, n_seeds, epochs, patience),
+        "env": fit_variant("env", data.N_FEATURES, parts, grid, n_seeds, epochs, patience),
+    }
+    pv = {k: predict_variant(f, val) for k, f in fits.items()}
+    pt = {k: predict_variant(f, test) for k, f in fits.items()}
 
-    # 4. test-set predictions
+    # Choose which variant to deploy using VALIDATION seasons only; the test seasons stay untouched.
+    val_score = {
+        k: nm(track_error_km(val, pv[k]["blend"][0])) / TRACK_SCALE + nm(wind_error_kt(val, pv[k]["blend"][1])) / WIND_SCALE
+        for k in fits
+    }
+    deployed = min(val_score, key=val_score.get)
+    fit, P_t, P_v = fits[deployed], pt[deployed], pv[deployed]
+    print(f"\nValidation scores {val_score} -> deploying '{deployed}'")
+
     zero_w = np.zeros((len(test), len(LEADS)))
-    tr_members, w_members = ensemble_predict(states, hidden, test, p_te["base"])
-    r_track, r_wind = ridge_predict(ridge, test, p_te["base"])
-    b_track, b_wind = blend(tr_members.mean(0), w_members.mean(0), r_track, r_wind)
     preds = {
         "persistence": {"track": persistence_track_km(test), "wind": zero_w},
         "const_vel_6h": {"track": constant_velocity_km(test, 1)},
-        "const_vel_12h": {"track": p_te["base"]},
-        "ridge": {"track": r_track, "wind": r_wind},
-        "gru": {"track": tr_members.mean(0), "wind": w_members.mean(0)},
-        "blend": {"track": b_track, "wind": b_wind},
+        "const_vel_12h": {"track": P_t["base"]},
+        "ridge": {"track": P_t["ridge"][0], "wind": P_t["ridge"][1]},
+        "gru": {"track": P_t["gru"][0], "wind": P_t["gru"][1]},
+        "blend": {"track": P_t["blend"][0], "wind": P_t["blend"][1]},
     }
     ev, terr, werr = evaluate(test, preds)
 
-    vt_members, vw_members = ensemble_predict(states, hidden, val, p_va["base"])
-    vr_track, vr_wind = ridge_predict(ridge, val, p_va["base"])
-    vb_track, vb_wind = blend(vt_members.mean(0), vw_members.mean(0), vr_track, vr_wind)
     cone = {
-        "track_km": calibrate(track_error_km(val, vb_track), terr["blend"]),
-        "wind_kt": calibrate(wind_error_kt(val, vb_wind), werr["blend"]),
+        "track_km": calibrate(track_error_km(val, P_v["blend"][0]), terr["blend"]),
+        "wind_kt": calibrate(wind_error_kt(val, P_v["blend"][1]), werr["blend"]),
     }
 
-    spread_tr = np.sqrt(tr_members.var(0).sum(-1))
-    spread_w = w_members.std(0)
-    spear = {
-        "track": [spearman(spread_tr[:, k], terr["gru"][:, k]) for k in range(len(LEADS))],
-        "wind": [spearman(spread_w[:, k], werr["gru"][:, k]) for k in range(len(LEADS))],
+    # A/B on the test seasons
+    ab_t = {k: track_error_km(test, pt[k]["blend"][0]) for k in fits}
+    ab_w = {k: wind_error_kt(test, pt[k]["blend"][1]) for k in fits}
+    n_leads = len(LEADS)
+    ab = {
+        "deployed": deployed,
+        "val_score": val_score,
+        "coverage": cov(test),
+        "track": {k: [nm(ab_t[k][:, j]) for j in range(n_leads)] for k in fits},
+        "wind": {k: [nm(ab_w[k][:, j]) for j in range(n_leads)] for k in fits},
+        "n_track": [int(np.isfinite(ab_t["env"][:, j]).sum()) for j in range(n_leads)],
+        "n_wind": [int(np.isfinite(ab_w["env"][:, j]).sum()) for j in range(n_leads)],
+        "diff_track": [cluster_bootstrap_ci(ab_t["env"][:, j] - ab_t["no_env"][:, j], test.sid) for j in range(n_leads)],
+        "diff_wind": [cluster_bootstrap_ci(ab_w["env"][:, j] - ab_w["no_env"][:, j], test.sid) for j in range(n_leads)],
     }
-    member_errs = [nm(track_error_km(test, tr_members[m])[:, 2]) for m in range(n_seeds)]
+
+    spread_tr = np.sqrt(P_t["tr_members"].var(0).sum(-1))
+    spread_w = P_t["w_members"].std(0)
+    spear = {
+        "track": [spearman(spread_tr[:, k], terr["gru"][:, k]) for k in range(n_leads)],
+        "wind": [spearman(spread_w[:, k], werr["gru"][:, k]) for k in range(n_leads)],
+    }
+    member_errs = [nm(track_error_km(test, P_t["tr_members"][m])[:, 2]) for m in range(n_seeds)]
     member_stats = {"mean": float(np.mean(member_errs)), "std": float(np.std(member_errs))}
 
     with db.engine.connect() as conn:
@@ -354,11 +420,13 @@ def main():
 
     meta = {
         "trained_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-        "source": "NOAA IBTrACS v04r01, North Indian Ocean file",
+        "source": "NOAA IBTrACS v04r01 + NOAA OISST v2.1 + NCEP/NCAR Reanalysis 1",
         "ensemble_size": n_seeds,
-        "hidden": hidden,
-        "weight_decay": wd,
-        "ridge_lambda": lam,
+        "hidden": fit["hidden"],
+        "weight_decay": fit["wd"],
+        "ridge_lambda": fit["lam"],
+        "deployed_variant": deployed,
+        "n_features": fit["n_feat"],
         "quick_run": args.quick,
         "splits": {
             k: {"seasons": f"{v.season.min()}-{v.season.max()}", "storms": len(set(v.sid)), "samples": len(v)}
@@ -368,7 +436,7 @@ def main():
         "python": platform.python_version(),
         "runtime_s": round(time.time() - t_start),
     }
-    report = fmt_report(meta, ev, spear, member_stats, cases, cone)
+    report = fmt_report(meta, ev, spear, member_stats, cases, cone, ab)
     print("\n" + report)
 
     if args.no_save:
@@ -376,9 +444,9 @@ def main():
     ARTIFACTS.mkdir(exist_ok=True)
     torch.save(
         {
-            "states": states,
-            "hidden": hidden,
-            "n_features": data.N_FEATURES,
+            "states": fit["states"],
+            "hidden": fit["hidden"],
+            "n_features": fit["n_feat"],
             "leads": LEADS,
             "hist_steps": data.HIST_STEPS,
             "track_scale": TRACK_SCALE,
@@ -386,9 +454,11 @@ def main():
             "region": data.REGION,
             "official_sources": list(data.OFFICIAL_SOURCES),
             "cone": cone,
-            "ridge": ridge.state(),
+            "ridge": fit["ridge"].state(),
             "info": {
-                "model": "50/50 blend of GRU ensemble and ridge regression",
+                "model": "50/50 blend of GRU ensemble and ridge regression"
+                + (", with SST + wind-shear inputs" if deployed == "env" else ""),
+                "uses_environment": deployed == "env",
                 "trained_at": meta["trained_at"],
                 "source": meta["source"],
                 "splits": meta["splits"],
@@ -400,7 +470,7 @@ def main():
         ARTIFACTS / "gru_ensemble.pt",
     )
     (ARTIFACTS / "metrics.json").write_text(
-        json.dumps({"meta": meta, "test": ev, "cone": cone, "spread_error_spearman": spear, "member_24h_track_km": member_stats}, indent=2, default=float),
+        json.dumps({"meta": meta, "test": ev, "environment_ab": ab, "cone": cone, "spread_error_spearman": spear, "member_24h_track_km": member_stats}, indent=2, default=float),
         encoding="utf-8",
     )
     (ARTIFACTS / "report.txt").write_text(report + "\n", encoding="utf-8")

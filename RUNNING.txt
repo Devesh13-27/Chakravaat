@@ -1,4 +1,4 @@
-CHAKRAVAAT - HOW TO RUN
+﻿CHAKRAVAAT - HOW TO RUN
 =======================
 
 Three parts:
@@ -96,17 +96,50 @@ Requirements: Node.js, Python 3.11+ (3.12 used here), Git.
 
 4) Forecast model (optional; needs step 3 including db:ingest)
 
-   a. Install the ML packages (PyTorch CPU build, ~200 MB):
+   a. Install the ML packages (PyTorch CPU build ~200 MB, plus xarray and netCDF4):
 
         cd backend
         .venv\Scripts\python.exe -m pip install -r requirements-ml.txt
         cd ..
 
-   b. Train it (a few minutes on a normal CPU). Writes backend/artifacts/:
+   b. Download the environment data the model can use (sea-surface temperature and wind
+      shear, free and no login; about 45 minutes the first time, ~730 MB kept on disk (backend/data/raw/env, git-ignored):
+
+        npm run env:ingest
+
+      Resumable: re-run it if it stops. Sources: NOAA OISST (SST) and NCEP/NCAR Reanalysis 1
+      (winds). This is not ERA5, which would need a Copernicus account.
+      Skipping this step still works: the model then trains without environment inputs.
+      Finding so far: adding these inputs did NOT improve forecasts enough to keep them (see the
+      A/B section of backend/artifacts/report.txt), so the deployed model does not use them. The
+      History Replay Environment tab still shows the real SST and shear for each forecast time.
+
+   b2. ERA5 (optional, better environment data; needs a free Copernicus account):
+
+        a) Register at https://cds.climate.copernicus.eu and copy your personal access token
+           from https://cds.climate.copernicus.eu/how-to-api
+        b) Accept the licence once on each dataset page (click "Accept" under Terms of use):
+             https://cds.climate.copernicus.eu/datasets/reanalysis-era5-pressure-levels?tab=download
+             https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels?tab=download
+        c) Create the file  C:\Users\<you>\.cdsapirc  with exactly two lines:
+             url: https://cds.climate.copernicus.eu/api
+             key: <your-personal-access-token>
+           (it lives in your home folder; never commit it or paste the token anywhere)
+        d) Verify, then download (requests queue at Copernicus, so a full run takes hours):
+
+             npm run era5:check
+             cd backend && .venv\Scripts\python.exe -m app.ingest.era5 --years 2023 --months 6   (small test)
+             npm run era5:ingest                                                                  (1990 - now)
+
+        Resumable: re-run if it stops. Files are cached compactly in backend/data/raw/env/.
+
+   c. Train it (about 15 minutes on a normal CPU: it trains the model twice, with and without
+      the environment inputs, and deploys whichever scores better on the validation seasons).
+      Writes backend/artifacts/:
 
         npm run ml:train
 
-      Prints a full evaluation (see backend/artifacts/report.txt): accuracy on seasons the
+      Prints a full evaluation, including the with/without-environment comparison (see backend/artifacts/report.txt): accuracy on seasons the
       model never saw, compared with simple baselines, with calibrated error radii.
       "npm run ml:train:quick" is a fast smoke test that saves nothing.
       The weights file (gru_ensemble.pt) is git-ignored, so each machine trains its own.

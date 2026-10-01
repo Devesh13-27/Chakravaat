@@ -162,6 +162,52 @@ const Replay = (() => {
     };
   }
 
+  /* ── environment tab (real SST / shear at the forecast start) ── */
+  function envCards(frame, prev) {
+    const sst = frame.sst_c;
+    const shear = frame.shear_ms;
+    const change = (now, before, unit) => (now == null || before == null)
+      ? ''
+      : ` · ${now >= before ? '▲' : '▼'} ${Math.abs(now - before).toFixed(1)} ${unit} vs 6 h earlier`;
+
+    const sstNote = sst == null
+      ? 'Unknown (over land or no data)'
+      : (sst >= 26.5 ? 'Warm enough to sustain a storm' : 'Marginal for intensification');
+    const shearNote = shear == null
+      ? 'Unknown'
+      : (shear < 10 ? 'Low: favourable' : shear < 20 ? 'Moderate' : 'High: hostile');
+
+    return [
+      {
+        label: 'Sea-surface temp',
+        value: sst == null ? '—' : sst.toFixed(1),
+        unit: '°C',
+        trend: sstNote + change(sst, prev?.sst_c, '°C'),
+        trendColor: sst == null ? 'var(--text-muted)' : (sst >= 26.5 ? 'var(--teal)' : 'var(--amber)')
+      },
+      {
+        label: '200–850 hPa shear',
+        value: shear == null ? '—' : shear.toFixed(1),
+        unit: 'm/s',
+        trend: shearNote + change(shear, prev?.shear_ms, 'm/s'),
+        trendColor: shear == null ? 'var(--text-muted)' : (shear < 10 ? 'var(--teal)' : shear < 20 ? 'var(--amber)' : 'var(--red)')
+      }
+    ];
+  }
+
+  function renderEnvironment(idx) {
+    const frame = frames[idx];
+    UI.renderEnvCards(envCards(frame, frames[idx - 1]));
+    UI.renderERA5([
+      { label: 'SST source', value: 'NOAA OISST v2.1, daily' },
+      { label: 'Shear source', value: 'NCEP/NCAR Reanalysis 1, daily' },
+      { label: 'Shear method', value: '±5° box mean, 200 minus 850 hPa' },
+      { label: 'Used by the model', value: hind.uses_environment ? 'Yes' : 'No (did not help on validation)' }
+    ], null);
+    const ts = $('era5Timestamp');
+    if (ts) ts.textContent = 'Daily means for the day of the forecast start. Not ERA5.';
+  }
+
   /* ── rendering ───────────────────────────────────────────── */
   function renderFrame(idx, { fit = false } = {}) {
     const frame = frames[idx];
@@ -179,8 +225,7 @@ const Replay = (() => {
     UI.renderStormCards([storm], storm.id, () => {});
     UI.updateStormPanel(storm);
     ChakravaatMap.updateDetectionOverlay(storm);
-    UI.renderEnvCards([]);
-    UI.renderERA5([], 'not available in replay (needs ERA5)');
+    renderEnvironment(idx);
     ChakravaatMap.updateMapAttr(`HINDCAST · ${hind.name} ${hind.season} · ${hind.out_of_sample ? 'UNSEEN SEASON' : 'TRAINING PERIOD'} · ${fmtTime(frame.init_time)}`);
   }
 
@@ -261,6 +306,8 @@ const Replay = (() => {
     active = true;
     $('replayPanel')?.removeAttribute('hidden');
     UI.setAlertBadge('HINDCAST REPLAY · NOT LIVE');
+    const title = $('era5Title');
+    if (title) title.textContent = 'Environment sources';
     try {
       await populatePicker();
     } catch (err) {
@@ -283,6 +330,8 @@ const Replay = (() => {
     loadToken++;
     $('replayPanel')?.setAttribute('hidden', '');
     UI.updateAlertBadge(window.STORM_DATA);
+    const title = $('era5Title');
+    if (title) title.textContent = 'ERA5 Reanalysis';
     Timeline.pause();
   }
 

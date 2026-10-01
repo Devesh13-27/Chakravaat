@@ -2,3 +2,6 @@
 # On Windows the PyPI build of torch is the CPU build, which is plenty for this dataset.
 torch>=2.4
 numpy>=1.26
+xarray>=2024.1
+netCDF4>=1.6
+cdsapi>=0.7

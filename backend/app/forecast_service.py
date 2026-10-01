@@ -72,6 +72,8 @@ def _frame(f: Forecaster, s: data.Samples, pred: dict, i: int) -> dict:
         "lat": round(float(s.lat0[i]), 3),
         "lon": round(float(s.lon0[i]), 3),
         "wind_kt": _num(s.wind0[i]),
+        "sst_c": _num(s.sst0[i]),
+        "shear_ms": _num(s.shear0[i]),
         "forecast": leads,
         "actual": actual if has_truth else None,
         "track_error_km": errors if has_truth else None,
@@ -103,6 +105,7 @@ def hindcast(sid: str, summary: dict) -> dict | None:
         "data_split": split,
         "out_of_sample": split == "test",
         "model": f.info["model"],
+        "uses_environment": bool(f.info.get("uses_environment", False)),
         "observed": observed,
         "frames": frames,
     }
@@ -124,6 +127,8 @@ def forecast_from_fixes(fixes: list[dict]) -> dict:
         "lon": [x["lon"] for x in fixes],
         "wind": [np.nan if x.get("wind_kt") is None else x["wind_kt"] for x in fixes],
         "pres": [np.nan if x.get("pressure_hpa") is None else x["pressure_hpa"] for x in fixes],
+        "sst": [np.nan if x.get("sst_c") is None else x["sst_c"] for x in fixes],
+        "shear": [np.nan if x.get("shear_ms") is None else x["shear_ms"] for x in fixes],
     }
     s = data.build_samples({"live": storm}, require_targets=False)
     if len(s) == 0:
@@ -138,8 +143,16 @@ def forecast_from_fixes(fixes: list[dict]) -> dict:
 
 def model_card() -> dict:
     f = get_forecaster()
+    uses_env = bool(f.info.get("uses_environment", False))
+    env_note = (
+        "In real-time requests, supply sst_c and shear_ms when available; when omitted the model treats them as unknown."
+        if uses_env
+        else "sst_c and shear_ms are accepted but ignored: a version trained with them did not beat the one without "
+        "on the validation seasons, so the deployed model does not use them."
+    )
     return {
         "model": f.info["model"],
+        "uses_environment": bool(f.info.get("uses_environment", False)),
         "trained_at": f.info["trained_at"],
         "source": f.info["source"],
         "splits": f.info["splits"],
@@ -149,7 +162,8 @@ def model_card() -> dict:
         "cone": f.cone_data,
         "caveats": [
             "Scored on post-analysed best-track positions, so real-time accuracy will be lower.",
-            "Trained on a few hundred storms; no sea-temperature or wind-shear inputs yet.",
+            "Trained on a few hundred storms. Environment inputs (SST, shear) are coarse daily fields, not ERA5.",
+            env_note,
             "Rapid intensification is not captured; intensity forecasts regress toward typical values.",
             "Central pressure is a model input: forecasts change materially when pressure_hpa is supplied vs omitted, so include it whenever known.",
             "Error radii are historical, calibrated on 2016-2018, and slightly overconfident on newer data.",

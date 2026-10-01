@@ -11,6 +11,9 @@
     "db:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File backend/scripts/db.ps1 stop",
     "db:seed": "cd backend && .venv\\Scripts\\python.exe -m app.seed",
     "db:ingest": "cd backend && .venv\\Scripts\\python.exe -m app.ingest.ibtracs",
+    "env:ingest": "cd backend && .venv\\Scripts\\python.exe -u -m app.ingest.environment",
+    "era5:check": "cd backend && .venv\\Scripts\\python.exe -m app.ingest.era5 --check",
+    "era5:ingest": "cd backend && .venv\\Scripts\\python.exe -u -m app.ingest.era5",
     "ml:train": "cd backend && .venv\\Scripts\\python.exe -u -m app.ml.train",
     "ml:train:quick": "cd backend && .venv\\Scripts\\python.exe -u -m app.ml.train --quick --no-save"
   }
