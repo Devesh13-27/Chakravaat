@@ -1,0 +1,475 @@
+[
+  {
+    "id": "biparjoy",
+    "name": "BIPARJOY-2",
+    "category": "vscs",
+    "categoryLabel": "VSCS",
+    "lat": 14.2,
+    "lon": 72.6,
+    "wind": 105,
+    "pressure": 978,
+    "direction": "NNE",
+    "speed": 18,
+    "intensitySteps": 6,
+    "activeSteps": 4,
+    "isWarning": true,
+    "detection": {
+      "status": "Confirmed",
+      "confidence": 96.7,
+      "center": "14.2°N 72.6°E",
+      "model": "ConvNeXt-L"
+    },
+    "classification": [
+      {
+        "label": "Very Severe Cyclonic Storm",
+        "pct": 74.2,
+        "color": "var(--red)"
+      },
+      {
+        "label": "Severe Cyclonic Storm",
+        "pct": 18.5,
+        "color": "var(--blue)"
+      },
+      {
+        "label": "Extremely Severe",
+        "pct": 6.1,
+        "color": "var(--amber)"
+      },
+      {
+        "label": "Cyclonic Storm",
+        "pct": 1.2,
+        "color": "var(--teal)"
+      }
+    ],
+    "intensityConf": 91,
+    "track": {
+      "historical": [
+        {
+          "lat": 11.8,
+          "lon": 71
+        },
+        {
+          "lat": 12,
+          "lon": 71.2
+        },
+        {
+          "lat": 12.5,
+          "lon": 71.5
+        },
+        {
+          "lat": 13,
+          "lon": 71.8
+        },
+        {
+          "lat": 13.5,
+          "lon": 72
+        },
+        {
+          "lat": 13.8,
+          "lon": 72.3
+        },
+        {
+          "lat": 14,
+          "lon": 72.5
+        },
+        {
+          "lat": 14.1,
+          "lon": 72.55
+        }
+      ],
+      "predicted": [
+        {
+          "lat": 14.7,
+          "lon": 72.9,
+          "label": "+6h"
+        },
+        {
+          "lat": 15.3,
+          "lon": 73.3,
+          "label": "+12h"
+        },
+        {
+          "lat": 16.4,
+          "lon": 74.2,
+          "label": "+24h"
+        },
+        {
+          "lat": 18,
+          "lon": 68.2,
+          "label": "+48h",
+          "uncertain": true
+        }
+      ]
+    },
+    "forecast": {
+      "track": [
+        {
+          "time": "Now",
+          "lat": "14.2°N",
+          "lon": "72.6°E",
+          "dist": "—",
+          "isCurrent": true
+        },
+        {
+          "time": "+6 h",
+          "lat": "14.7°N",
+          "lon": "73.3°E",
+          "dist": "89 km"
+        },
+        {
+          "time": "+12 h",
+          "lat": "15.3°N",
+          "lon": "74.1°E",
+          "dist": "183 km"
+        },
+        {
+          "time": "+24 h",
+          "lat": "16.4°N",
+          "lon": "75.6°E",
+          "dist": "374 km"
+        },
+        {
+          "time": "+48 h*",
+          "lat": "18.2°N",
+          "lon": "68.2°E",
+          "dist": "—"
+        }
+      ],
+      "intensity": [
+        {
+          "time": "Now",
+          "wind": "105 km/h",
+          "pressure": "978 hPa",
+          "cls": "VSCS",
+          "isCurrent": true
+        },
+        {
+          "time": "+6 h",
+          "wind": "112 km/h",
+          "pressure": "974 hPa",
+          "cls": "VSCS",
+          "trend": "up"
+        },
+        {
+          "time": "+12 h",
+          "wind": "120 km/h",
+          "pressure": "970 hPa",
+          "cls": "ESCS",
+          "trend": "up"
+        },
+        {
+          "time": "+24 h",
+          "wind": "135 km/h",
+          "pressure": "962 hPa",
+          "cls": "ESCS",
+          "trend": "up"
+        },
+        {
+          "time": "+48 h",
+          "wind": "90 km/h",
+          "pressure": "985 hPa",
+          "cls": "SCS",
+          "trend": "dn"
+        }
+      ]
+    },
+    "uncertainty": [
+      {
+        "label": "+6 h track corridor",
+        "value": "± 42 km"
+      },
+      {
+        "label": "+12 h track corridor",
+        "value": "± 85 km"
+      },
+      {
+        "label": "+24 h track corridor",
+        "value": "± 145 km"
+      },
+      {
+        "label": "+48 h track corridor",
+        "value": "± 248 km"
+      }
+    ],
+    "alerts": [
+      {
+        "type": "crit",
+        "icon": "⚡",
+        "title": "Landfall Alert — Gujarat Coast",
+        "body": "AI predicts landfall near Mandvi/Jakhau in ~34–38 hrs. Estimated 95–110 km/h at landfall."
+      },
+      {
+        "type": "warn",
+        "icon": "📈",
+        "title": "Rapid Intensification Signal",
+        "body": "SST 30–31°C with low wind shear. RI possible over next 12 hrs."
+      },
+      {
+        "type": "info",
+        "icon": "ℹ",
+        "title": "Secondary System — MOCHA",
+        "body": "Deep Depression developing in Bay of Bengal. Monitoring for intensification."
+      }
+    ],
+    "features": [
+      {
+        "name": "Spiral cloud structure",
+        "pct": 87,
+        "color": "var(--blue)"
+      },
+      {
+        "name": "Cold cloud-top temp",
+        "pct": 76,
+        "color": "var(--red)"
+      },
+      {
+        "name": "Eye diameter (est.)",
+        "pct": 64,
+        "color": "var(--blue)"
+      },
+      {
+        "name": "SST anomaly",
+        "pct": 55,
+        "color": "var(--teal)"
+      },
+      {
+        "name": "Convective symmetry",
+        "pct": 48,
+        "color": "var(--blue)"
+      },
+      {
+        "name": "Pressure gradient",
+        "pct": 39,
+        "color": "var(--teal)"
+      }
+    ],
+    "modelStack": [
+      {
+        "name": "Detection — ConvNeXt-L",
+        "pct": 96.7
+      },
+      {
+        "name": "Classification — EfficientNet-B4",
+        "pct": 74.2,
+        "color": "linear-gradient(to right, var(--red), var(--amber))"
+      },
+      {
+        "name": "Intensity — CNN Regression",
+        "pct": 91
+      },
+      {
+        "name": "Track — Temporal Transformer",
+        "pct": 88.3
+      }
+    ]
+  },
+  {
+    "id": "mocha",
+    "name": "MOCHA",
+    "category": "dd",
+    "categoryLabel": "Deep Depression",
+    "lat": 10.8,
+    "lon": 85.3,
+    "wind": 55,
+    "pressure": 1004,
+    "direction": "N",
+    "speed": 9,
+    "intensitySteps": 6,
+    "activeSteps": 2,
+    "isWarning": false,
+    "detection": {
+      "status": "Confirmed",
+      "confidence": 82.4,
+      "center": "10.8°N 85.3°E",
+      "model": "ConvNeXt-L"
+    },
+    "classification": [
+      {
+        "label": "Deep Depression",
+        "pct": 68,
+        "color": "var(--amber)"
+      },
+      {
+        "label": "Cyclonic Storm",
+        "pct": 22.5,
+        "color": "var(--blue)"
+      },
+      {
+        "label": "Depression",
+        "pct": 7,
+        "color": "var(--teal)"
+      },
+      {
+        "label": "Disturbance",
+        "pct": 2.5,
+        "color": "var(--text-muted)"
+      }
+    ],
+    "intensityConf": 78,
+    "track": {
+      "historical": [
+        {
+          "lat": 9,
+          "lon": 85.5
+        },
+        {
+          "lat": 9.5,
+          "lon": 85.4
+        },
+        {
+          "lat": 10,
+          "lon": 85.4
+        },
+        {
+          "lat": 10.4,
+          "lon": 85.3
+        }
+      ],
+      "predicted": [
+        {
+          "lat": 11.2,
+          "lon": 85.2,
+          "label": "+6h"
+        },
+        {
+          "lat": 11.9,
+          "lon": 85.1,
+          "label": "+12h"
+        },
+        {
+          "lat": 13.2,
+          "lon": 85,
+          "label": "+24h"
+        }
+      ]
+    },
+    "forecast": {
+      "track": [
+        {
+          "time": "Now",
+          "lat": "10.8°N",
+          "lon": "85.3°E",
+          "dist": "—",
+          "isCurrent": true
+        },
+        {
+          "time": "+6 h",
+          "lat": "11.2°N",
+          "lon": "85.2°E",
+          "dist": "45 km"
+        },
+        {
+          "time": "+12 h",
+          "lat": "11.9°N",
+          "lon": "85.1°E",
+          "dist": "123 km"
+        },
+        {
+          "time": "+24 h",
+          "lat": "13.2°N",
+          "lon": "85.0°E",
+          "dist": "265 km"
+        }
+      ],
+      "intensity": [
+        {
+          "time": "Now",
+          "wind": "55 km/h",
+          "pressure": "1004 hPa",
+          "cls": "DD",
+          "isCurrent": true
+        },
+        {
+          "time": "+6 h",
+          "wind": "60 km/h",
+          "pressure": "1001 hPa",
+          "cls": "DD",
+          "trend": "up"
+        },
+        {
+          "time": "+12 h",
+          "wind": "70 km/h",
+          "pressure": "996 hPa",
+          "cls": "CS",
+          "trend": "up"
+        },
+        {
+          "time": "+24 h",
+          "wind": "85 km/h",
+          "pressure": "988 hPa",
+          "cls": "CS",
+          "trend": "up"
+        }
+      ]
+    },
+    "uncertainty": [
+      {
+        "label": "+6 h track corridor",
+        "value": "± 38 km"
+      },
+      {
+        "label": "+12 h track corridor",
+        "value": "± 72 km"
+      },
+      {
+        "label": "+24 h track corridor",
+        "value": "± 130 km"
+      }
+    ],
+    "alerts": [
+      {
+        "type": "warn",
+        "icon": "🌀",
+        "title": "Development Watch — Bay of Bengal",
+        "body": "Conditions favour organisation into a Cyclonic Storm within 24–36 hrs."
+      },
+      {
+        "type": "info",
+        "icon": "ℹ",
+        "title": "Monitoring Active",
+        "body": "IMD issuing regular bulletins. Satellite reconnaissance ongoing."
+      }
+    ],
+    "features": [
+      {
+        "name": "Convective cluster",
+        "pct": 72,
+        "color": "var(--blue)"
+      },
+      {
+        "name": "Low-level vorticity",
+        "pct": 61,
+        "color": "var(--teal)"
+      },
+      {
+        "name": "SST anomaly",
+        "pct": 50,
+        "color": "var(--teal)"
+      },
+      {
+        "name": "Wind shear pattern",
+        "pct": 38,
+        "color": "var(--amber)"
+      }
+    ],
+    "modelStack": [
+      {
+        "name": "Detection — ConvNeXt-L",
+        "pct": 82.4
+      },
+      {
+        "name": "Classification — EfficientNet-B4",
+        "pct": 68,
+        "color": "linear-gradient(to right, var(--amber), var(--blue))"
+      },
+      {
+        "name": "Intensity — CNN Regression",
+        "pct": 78
+      },
+      {
+        "name": "Track — Temporal Transformer",
+        "pct": 80.5
+      }
+    ]
+  }
+]

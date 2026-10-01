@@ -1,2 +1,5 @@
 js/config.local.js
 .env
+backend/.venv/
+__pycache__/
+*.pyc

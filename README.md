@@ -45,9 +45,28 @@ Open `http://localhost:8080` in your browser.
 
 ---
 
+## Running with the backend
+
+```bash
+# terminal 1 — API on :8000 (docs at http://127.0.0.1:8000/docs)
+cd backend
+python -m venv .venv
+.venv/Scripts/python.exe -m pip install -r requirements.txt
+.venv/Scripts/python.exe -m uvicorn app.main:app --reload --port 8000
+
+# terminal 2 — frontend
+npx serve .
+```
+
+`js/api.js` loads everything from the API on startup (override the URL with
+`window.CHAKRAVAAT_CONFIG.apiBaseUrl`). If the backend is unreachable the UI falls
+back to the demo data in `js/data.js` and shows a "Backend offline" toast.
+
+---
+
 ## Backend Integration
 
-### 1 · Replace mock data with API calls
+### 1 · Replace mock data with API calls (done — see `js/api.js`)
 
 Open `js/data.js`. Every `window.*` constant maps to one API endpoint.
 Replace the static values with `fetch()` calls before calling `App.init()`.

@@ -1,0 +1,124 @@
+{
+  "biparjoy": {
+    "cards": [
+      {
+        "label": "Sea Surface Temp",
+        "value": "30.4",
+        "unit": "°C",
+        "trend": "↑ +1.2°C anomaly",
+        "trendColor": "var(--red)"
+      },
+      {
+        "label": "Wind Shear",
+        "value": "8",
+        "unit": "m/s",
+        "trend": "↓ Low — favors RI",
+        "trendColor": "var(--teal)"
+      },
+      {
+        "label": "Atm. Humidity",
+        "value": "82",
+        "unit": "%",
+        "trend": "→ Stable",
+        "trendColor": "var(--blue)"
+      },
+      {
+        "label": "850 hPa Vorticity",
+        "value": "4.2",
+        "unit": "×10⁻⁵",
+        "trend": "↑ Increasing",
+        "trendColor": "var(--red)"
+      },
+      {
+        "label": "Ocean Heat",
+        "value": "72",
+        "unit": "kJ/cm²",
+        "trend": "High",
+        "trendColor": "var(--red)"
+      },
+      {
+        "label": "Outflow Channel",
+        "value": "2",
+        "unit": "axes",
+        "trend": "Favorable",
+        "trendColor": "var(--teal)"
+      }
+    ],
+    "era5": [
+      {
+        "label": "Pressure at 850 hPa",
+        "value": "852 hPa"
+      },
+      {
+        "label": "850–200 hPa shear",
+        "value": "7.8 m/s"
+      },
+      {
+        "label": "Divergence at 200 hPa",
+        "value": "2.1×10⁻⁵"
+      }
+    ],
+    "era5Timestamp": "2024-06-14 06:00 UTC · 0.25°×0.25°"
+  },
+  "mocha": {
+    "cards": [
+      {
+        "label": "Sea Surface Temp",
+        "value": "29.1",
+        "unit": "°C",
+        "trend": "↑ +0.8°C anomaly",
+        "trendColor": "var(--amber)"
+      },
+      {
+        "label": "Wind Shear",
+        "value": "14",
+        "unit": "m/s",
+        "trend": "→ Moderate",
+        "trendColor": "var(--amber)"
+      },
+      {
+        "label": "Atm. Humidity",
+        "value": "78",
+        "unit": "%",
+        "trend": "→ Stable",
+        "trendColor": "var(--blue)"
+      },
+      {
+        "label": "850 hPa Vorticity",
+        "value": "2.8",
+        "unit": "×10⁻⁵",
+        "trend": "↑ Rising",
+        "trendColor": "var(--amber)"
+      },
+      {
+        "label": "Ocean Heat",
+        "value": "55",
+        "unit": "kJ/cm²",
+        "trend": "Moderate",
+        "trendColor": "var(--amber)"
+      },
+      {
+        "label": "Outflow Channel",
+        "value": "1",
+        "unit": "axis",
+        "trend": "Marginal",
+        "trendColor": "var(--amber)"
+      }
+    ],
+    "era5": [
+      {
+        "label": "Pressure at 850 hPa",
+        "value": "860 hPa"
+      },
+      {
+        "label": "850–200 hPa shear",
+        "value": "13.2 m/s"
+      },
+      {
+        "label": "Divergence at 200 hPa",
+        "value": "1.4×10⁻⁵"
+      }
+    ],
+    "era5Timestamp": "2024-06-14 06:00 UTC · 0.25°×0.25°"
+  }
+}

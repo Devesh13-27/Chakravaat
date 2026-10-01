@@ -1,0 +1,17 @@
+[
+  {
+    "name": "INSAT-3DR",
+    "freq": "IR 10.8μm · 30 min",
+    "status": "ok"
+  },
+  {
+    "name": "Himawari-9",
+    "freq": "VIS + IR · 10 min",
+    "status": "ok"
+  },
+  {
+    "name": "NOAA HURSAT",
+    "freq": "Archive · historical",
+    "status": "delayed"
+  }
+]

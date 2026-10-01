@@ -1,0 +1,45 @@
+[
+  {
+    "id": "g-predicted",
+    "label": "Predicted Track",
+    "color": "var(--red)",
+    "on": true
+  },
+  {
+    "id": "g-uncertainty",
+    "label": "Uncertainty Cone",
+    "color": "rgba(230,57,70,0.3)",
+    "border": "1px solid var(--red)",
+    "on": true
+  },
+  {
+    "id": "g-historical",
+    "label": "Historical Positions",
+    "color": "var(--blue)",
+    "on": true
+  },
+  {
+    "id": "g-sst",
+    "label": "Sea Surface Temp",
+    "color": "var(--teal)",
+    "on": false
+  },
+  {
+    "id": "g-shear",
+    "label": "Wind Shear",
+    "color": "var(--amber)",
+    "on": false
+  },
+  {
+    "id": "g-cloud",
+    "label": "Cloud Top Temp",
+    "color": "#9B59B6",
+    "on": true
+  },
+  {
+    "id": "g-pressure",
+    "label": "Pressure Contours",
+    "color": "var(--navy-mid)",
+    "on": false
+  }
+]

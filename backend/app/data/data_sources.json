@@ -1,0 +1,27 @@
+[
+  {
+    "icon": "📡",
+    "name": "INSAT-3DR",
+    "desc": "ISRO/IMD IR+WV"
+  },
+  {
+    "icon": "🛰",
+    "name": "Himawari-9",
+    "desc": "JMA 10-min bands"
+  },
+  {
+    "icon": "🌊",
+    "name": "ERA5",
+    "desc": "ECMWF Reanalysis v5"
+  },
+  {
+    "icon": "📊",
+    "name": "IBTrACS",
+    "desc": "NOAA Best Track"
+  },
+  {
+    "icon": "🌡",
+    "name": "OISST",
+    "desc": "NOAA SST 0.25°"
+  }
+]

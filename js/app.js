@@ -123,6 +123,9 @@ const App = (() => {
 
   /* ── Bootstrap ───────────────────────────────────────────── */
   async function init() {
+    /* Pull live data from the backend (falls back to data.js demo data) */
+    const dataMode = await Api.load();
+
     /* Render map (awaited so overlays exist before we sync layer visibility) */
     await ChakravaatMap.renderMap(window.STORM_DATA);
 
@@ -197,6 +200,8 @@ const App = (() => {
     document.getElementById('playBtn')?.addEventListener('click', () => {
       UI.toast(Timeline.isPlaying() ? 'Replay started' : 'Replay paused');
     });
+
+    UI.toast(dataMode === 'live' ? 'Live data connected' : 'Backend offline — showing demo data');
   }
 
   /* ── Public ─────────────────────────────────────────────── */
