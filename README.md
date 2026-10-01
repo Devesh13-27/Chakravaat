@@ -58,6 +58,25 @@ python -m venv .venv
 npx serve .
 ```
 
+### Database (optional — PostgreSQL 17 + PostGIS, free, no admin rights)
+
+Without `DATABASE_URL` the API serves `backend/app/data/*.json`. To use PostGIS:
+
+1. Download and unzip into `%USERPROFILE%\pg-chakravaat`:
+   - PostgreSQL binaries: `https://get.enterprisedb.com/postgresql/postgresql-17.6-1-windows-x64-binaries.zip` (gives `pgsql\`)
+   - PostGIS bundle: `https://download.osgeo.org/postgis/windows/pg17/postgis-bundle-pg17-3.6.2x64.zip` — copy its `bin`, `lib`, `share` folders into `pgsql\`
+2. Create the cluster once:
+   `pgsql\bin\initdb.exe -D data -U postgres --auth=trust --encoding=UTF8 --locale=C`
+3. Start it (port 5433, localhost only) and create the database:
+   ```bash
+   powershell backend/scripts/db.ps1 start
+   pgsql/bin/createdb.exe -h 127.0.0.1 -p 5433 -U postgres chakravaat
+   ```
+4. `cp backend/.env.example backend/.env`, then load the demo data (**resets all tables**):
+   `cd backend && .venv/Scripts/python.exe -m app.seed`
+
+`GET /api/v1/health` reports `"storage": "postgis"` (or `"json"`). Stop the database with `backend/scripts/db.ps1 stop`.
+
 `js/api.js` loads everything from the API on startup (override the URL with
 `window.CHAKRAVAAT_CONFIG.apiBaseUrl`). If the backend is unreachable the UI falls
 back to the demo data in `js/data.js` and shows a "Backend offline" toast.

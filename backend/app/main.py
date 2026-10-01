@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import store
+from . import repo
 from .schemas import (
     DataSource,
     Environment,
@@ -30,17 +30,17 @@ API = "/api/v1"
 
 @app.get(f"{API}/health", tags=["meta"])
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "storage": repo.storage_name()}
 
 
 @app.get(f"{API}/storms/active", response_model=list[Storm], response_model_exclude_none=True, tags=["storms"])
 def active_storms():
-    return store.STORMS
+    return repo.storms()
 
 
 @app.get(f"{API}/storms/{{storm_id}}", response_model=Storm, response_model_exclude_none=True, tags=["storms"])
 def get_storm(storm_id: str):
-    storm = next((s for s in store.STORMS if s["id"] == storm_id), None)
+    storm = repo.storm(storm_id)
     if storm is None:
         raise HTTPException(status_code=404, detail=f"Storm '{storm_id}' not found")
     return storm
@@ -48,17 +48,17 @@ def get_storm(storm_id: str):
 
 @app.get(f"{API}/sat-feeds", response_model=list[SatFeed], response_model_exclude_none=True, tags=["feeds"])
 def sat_feeds():
-    return store.SAT_FEEDS
+    return repo.sat_feeds()
 
 
 @app.get(f"{API}/layers", response_model=list[MapLayer], response_model_exclude_none=True, tags=["map"])
 def layers():
-    return store.LAYERS
+    return repo.layers()
 
 
 @app.get(f"{API}/environment", response_model=Environment, response_model_exclude_none=True, tags=["environment"])
 def environment(storm: str = Query(..., description="Storm id, e.g. 'biparjoy'")):
-    env = store.ENVIRONMENT.get(storm)
+    env = repo.environment(storm)
     if env is None:
         raise HTTPException(status_code=404, detail=f"No environment data for storm '{storm}'")
     return env
@@ -66,9 +66,9 @@ def environment(storm: str = Query(..., description="Storm id, e.g. 'biparjoy'")
 
 @app.get(f"{API}/data-sources", response_model=list[DataSource], response_model_exclude_none=True, tags=["meta"])
 def data_sources():
-    return store.DATA_SOURCES
+    return repo.data_sources()
 
 
 @app.get(f"{API}/timeline", response_model=Timeline, response_model_exclude_none=True, tags=["map"])
 def timeline():
-    return store.TIMELINE
+    return repo.timeline()
