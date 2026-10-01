@@ -3,8 +3,9 @@
     python -m app.ml.train            # full run (grid search + 5-member ensemble)
     python -m app.ml.train --quick    # fast smoke run
 
-Evaluation uses seasons the model never saw (see data.py) and compares against persistence,
-constant-velocity extrapolation and a ridge regression. Confidence intervals resample whole storms.
+The deployed model is a fixed 50/50 blend of the GRU ensemble and a ridge regression. Evaluation uses
+seasons the model never saw (see data.py) and compares against persistence, constant-velocity
+extrapolation, ridge and the GRU alone. Confidence intervals resample whole storms.
 """
 
 import argparse
@@ -32,11 +33,10 @@ from .baselines import (
 )
 from .data import LEAD_HOURS, LEADS, Samples, track_targets_km, wind_targets
 from .geo import from_km, haversine_km
+from .infer import TRACK_SCALE, WIND_SCALE, blend, ensemble_predict, ridge_predict
 from .model import GRUForecaster
 
 ARTIFACTS = Path(__file__).resolve().parents[2] / "artifacts"
-TRACK_SCALE = 100.0  # km per model unit
-WIND_SCALE = 10.0  # kt per model unit
 CASE_STORMS = [("BIPARJOY", 2023), ("MOCHA", 2023)]
 
 
@@ -99,21 +99,6 @@ def train_member(seed, hidden, weight_decay, tr, va, epochs, patience, batch=128
     return best_val, best_state, best_ep
 
 
-def ensemble_predict(states, hidden, s: Samples, base: np.ndarray):
-    """-> track displacement (M,N,L,2) km, wind change (M,N,L) kt, one slice per ensemble member."""
-    tracks, winds = [], []
-    x = torch.from_numpy(s.x)
-    with torch.no_grad():
-        for st in states:
-            m = GRUForecaster(data.N_FEATURES, len(LEADS), hidden=hidden)
-            m.load_state_dict(st)
-            m.eval()
-            t, w = m(x)
-            tracks.append(t.numpy() * TRACK_SCALE + base)
-            winds.append(w.numpy() * WIND_SCALE)
-    return np.stack(tracks), np.stack(winds)
-
-
 # ── ridge baseline ───────────────────────────────────────────────────────────
 
 
@@ -122,12 +107,6 @@ def ridge_targets(p: dict):
     y = np.concatenate([p["y_tr"].numpy().reshape(n, -1) * TRACK_SCALE, p["y_w"].numpy() * WIND_SCALE], axis=1)
     m = np.concatenate([np.repeat(p["m_tr"].numpy(), 2, axis=1), p["m_w"].numpy()], axis=1).astype(bool)
     return y, m
-
-
-def ridge_predict(model: Ridge, s: Samples, base: np.ndarray):
-    out = model.predict(s.x)
-    L = len(LEADS)
-    return out[:, : 2 * L].reshape(-1, L, 2) + base, out[:, 2 * L :]
 
 
 # ── statistics ───────────────────────────────────────────────────────────────
@@ -191,10 +170,10 @@ def evaluate(test: Samples, preds: dict) -> dict:
         for m, e in werr.items()
     }
     res["vs"] = {"track": {}, "wind": {}}
-    for ref in ("const_vel_12h", "ridge"):
-        res["vs"]["track"][ref] = [cluster_bootstrap_ci(terr["gru"][:, k] - terr[ref][:, k], test.sid) for k in range(len(LEADS))]
-    for ref in ("persistence", "ridge"):
-        res["vs"]["wind"][ref] = [cluster_bootstrap_ci(werr["gru"][:, k] - werr[ref][:, k], test.sid) for k in range(len(LEADS))]
+    for ref in ("const_vel_12h", "ridge", "gru"):
+        res["vs"]["track"][ref] = [cluster_bootstrap_ci(terr["blend"][:, k] - terr[ref][:, k], test.sid) for k in range(len(LEADS))]
+    for ref in ("persistence", "ridge", "gru"):
+        res["vs"]["wind"][ref] = [cluster_bootstrap_ci(werr["blend"][:, k] - werr[ref][:, k], test.sid) for k in range(len(LEADS))]
     return res, terr, werr
 
 
@@ -206,7 +185,7 @@ def case_study(test: Samples, sid: str, preds: dict, spread_tr: np.ndarray) -> l
     lines = []
     for q in (0.25, 0.5, 0.75):
         i = full[int(q * (len(full) - 1))]
-        lat_p, lon_p = from_km(test.lat0[i], test.lon0[i], preds["gru"]["track"][i, :, 0], preds["gru"]["track"][i, :, 1])
+        lat_p, lon_p = from_km(test.lat0[i], test.lon0[i], preds["blend"]["track"][i, :, 0], preds["blend"]["track"][i, :, 1])
         lat_c, lon_c = from_km(test.lat0[i], test.lon0[i], preds["const_vel_12h"]["track"][i, :, 0], preds["const_vel_12h"]["track"][i, :, 1])
         e_g = haversine_km(lat_p, lon_p, test.tgt_lat[i], test.tgt_lon[i])
         e_c = haversine_km(lat_c, lon_c, test.tgt_lat[i], test.tgt_lon[i])
@@ -215,10 +194,10 @@ def case_study(test: Samples, sid: str, preds: dict, spread_tr: np.ndarray) -> l
         for k in (2, 3):
             wtxt = ""
             if not np.isnan(w0) and not np.isnan(test.tgt_wind[i, k]):
-                wtxt = f" | wind pred {w0 + preds['gru']['wind'][i, k]:.0f} vs actual {test.tgt_wind[i, k]:.0f} kt"
+                wtxt = f" | wind pred {w0 + preds['blend']['wind'][i, k]:.0f} vs actual {test.tgt_wind[i, k]:.0f} kt"
             lines.append(
                 f"     +{LEAD_HOURS[k]}h: pred {lat_p[k]:.1f}N {lon_p[k]:.1f}E | actual {test.tgt_lat[i, k]:.1f}N {test.tgt_lon[i, k]:.1f}E"
-                f" | error GRU {e_g[k]:.0f} km (const-vel {e_c[k]:.0f}) +/-{spread_tr[i, k]:.0f} km spread{wtxt}"
+                f" | error blend {e_g[k]:.0f} km (const-vel {e_c[k]:.0f}) +/-{spread_tr[i, k]:.0f} km spread{wtxt}"
             )
     return lines
 
@@ -231,34 +210,34 @@ def fmt_report(meta, ev, spear, member_stats, cases, cone) -> str:
     add(f"Trained: {meta['trained_at']}   |   data: {meta['source']}")
     add(f"Split by season (no overlap): train {meta['splits']['train']['seasons']} ({meta['splits']['train']['storms']} storms, {meta['splits']['train']['samples']} samples) | "
         f"val {meta['splits']['val']['seasons']} ({meta['splits']['val']['storms']} storms) | test {meta['splits']['test']['seasons']} ({meta['splits']['test']['storms']} storms, {meta['splits']['test']['samples']} samples)")
-    add(f"Model: {meta['ensemble_size']}-member GRU ensemble, hidden={meta['hidden']}, weight_decay={meta['weight_decay']}, inputs=last {data.HIST_STEPS * data.STEP_H} h of 6-hourly fixes")
+    add(f"Deployed model: 50/50 blend of a {meta['ensemble_size']}-member GRU ensemble and a ridge regression. GRU: hidden={meta['hidden']}, weight_decay={meta['weight_decay']}, ridge lambda={meta['ridge_lambda']}; inputs=last {data.HIST_STEPS * data.STEP_H} h of 6-hourly fixes")
     add(f"Intensity: official-agency winds only (IMD/WMO); trained and scored only where the storm's current wind is known.")
     add("")
     add("TRACK ERROR on the held-out test seasons, mean great-circle km (lower is better)")
-    hdr = "lead     n  persistence  const-vel6h  const-vel12h        ridge  GRU-ensemble"
+    hdr = "lead     n  persistence  const-vel6h  const-vel12h        ridge          GRU  BLEND (deployed)"
     add(hdr)
     for k, h in enumerate(LEAD_HOURS):
         t = ev["track"]
-        add(f"+{h:>2}h {t['gru']['n'][k]:>5}  {t['persistence']['mean_km'][k]:>11.0f}  {t['const_vel_6h']['mean_km'][k]:>11.0f}  {t['const_vel_12h']['mean_km'][k]:>12.0f}  {t['ridge']['mean_km'][k]:>11.0f}  {t['gru']['mean_km'][k]:>12.0f}")
+        add(f"+{h:>2}h {t['gru']['n'][k]:>5}  {t['persistence']['mean_km'][k]:>11.0f}  {t['const_vel_6h']['mean_km'][k]:>11.0f}  {t['const_vel_12h']['mean_km'][k]:>12.0f}  {t['ridge']['mean_km'][k]:>11.0f}  {t['gru']['mean_km'][k]:>11.0f}  {t['blend']['mean_km'][k]:>16.0f}")
     add("")
-    add("GRU minus baseline, mean km with 95% CI from resampling storms (negative = GRU better)")
-    for ref in ("const_vel_12h", "ridge"):
+    add("BLEND minus reference, mean km with 95% CI from resampling storms (negative = blend better)")
+    for ref in ("const_vel_12h", "ridge", "gru"):
         for k, h in enumerate(LEAD_HOURS):
             m, lo, hi = ev["vs"]["track"][ref][k]
-            verdict = "GRU better" if hi < 0 else ("GRU worse" if lo > 0 else "no clear difference")
+            verdict = "blend better" if hi < 0 else ("blend worse" if lo > 0 else "no clear difference")
             add(f"  vs {ref:<14} +{h:>2}h: {m:+7.1f} km  [{lo:+7.1f}, {hi:+7.1f}]  -> {verdict}")
     add("")
     add("INTENSITY ERROR on the held-out test seasons, mean absolute kt (lower is better)")
-    add("lead     n  persistence        ridge  GRU-ensemble")
+    add("lead     n  persistence        ridge          GRU  BLEND (deployed)")
     for k, h in enumerate(LEAD_HOURS):
         w = ev["wind"]
-        add(f"+{h:>2}h {w['gru']['n'][k]:>5}  {w['persistence']['mae_kt'][k]:>11.1f}  {w['ridge']['mae_kt'][k]:>11.1f}  {w['gru']['mae_kt'][k]:>12.1f}")
+        add(f"+{h:>2}h {w['gru']['n'][k]:>5}  {w['persistence']['mae_kt'][k]:>11.1f}  {w['ridge']['mae_kt'][k]:>11.1f}  {w['gru']['mae_kt'][k]:>11.1f}  {w['blend']['mae_kt'][k]:>16.1f}")
     add("")
-    add("GRU minus baseline, mean kt with 95% CI from resampling storms (negative = GRU better)")
-    for ref in ("persistence", "ridge"):
+    add("BLEND minus reference, mean kt with 95% CI from resampling storms (negative = blend better)")
+    for ref in ("persistence", "ridge", "gru"):
         for k, h in enumerate(LEAD_HOURS):
             m, lo, hi = ev["vs"]["wind"][ref][k]
-            verdict = "GRU better" if hi < 0 else ("GRU worse" if lo > 0 else "no clear difference")
+            verdict = "blend better" if hi < 0 else ("blend worse" if lo > 0 else "no clear difference")
             add(f"  vs {ref:<12} +{h:>2}h: {m:+6.2f} kt  [{lo:+6.2f}, {hi:+6.2f}]  -> {verdict}")
     add("")
     add("UNCERTAINTY CONE: error radius per lead, set from validation-season errors, then checked on the unseen test seasons")
@@ -341,19 +320,23 @@ def main():
     zero_w = np.zeros((len(test), len(LEADS)))
     tr_members, w_members = ensemble_predict(states, hidden, test, p_te["base"])
     r_track, r_wind = ridge_predict(ridge, test, p_te["base"])
+    b_track, b_wind = blend(tr_members.mean(0), w_members.mean(0), r_track, r_wind)
     preds = {
         "persistence": {"track": persistence_track_km(test), "wind": zero_w},
         "const_vel_6h": {"track": constant_velocity_km(test, 1)},
         "const_vel_12h": {"track": p_te["base"]},
         "ridge": {"track": r_track, "wind": r_wind},
         "gru": {"track": tr_members.mean(0), "wind": w_members.mean(0)},
+        "blend": {"track": b_track, "wind": b_wind},
     }
     ev, terr, werr = evaluate(test, preds)
 
     vt_members, vw_members = ensemble_predict(states, hidden, val, p_va["base"])
+    vr_track, vr_wind = ridge_predict(ridge, val, p_va["base"])
+    vb_track, vb_wind = blend(vt_members.mean(0), vw_members.mean(0), vr_track, vr_wind)
     cone = {
-        "track_km": calibrate(track_error_km(val, vt_members.mean(0)), terr["gru"]),
-        "wind_kt": calibrate(wind_error_kt(val, vw_members.mean(0)), werr["gru"]),
+        "track_km": calibrate(track_error_km(val, vb_track), terr["blend"]),
+        "wind_kt": calibrate(wind_error_kt(val, vb_wind), werr["blend"]),
     }
 
     spread_tr = np.sqrt(tr_members.var(0).sum(-1))
@@ -403,6 +386,16 @@ def main():
             "region": data.REGION,
             "official_sources": list(data.OFFICIAL_SOURCES),
             "cone": cone,
+            "ridge": ridge.state(),
+            "info": {
+                "model": "50/50 blend of GRU ensemble and ridge regression",
+                "trained_at": meta["trained_at"],
+                "source": meta["source"],
+                "splits": meta["splits"],
+                "leads_h": LEAD_HOURS,
+                "test_track_km": ev["track"]["blend"]["mean_km"],
+                "test_wind_kt": ev["wind"]["blend"]["mae_kt"],
+            },
         },
         ARTIFACTS / "gru_ensemble.pt",
     )

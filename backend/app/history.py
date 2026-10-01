@@ -167,3 +167,9 @@ def storms_near(
             for s in session.scalars(select(HistoricalStorm).where(HistoricalStorm.sid.in_([h.sid for h in hits])))
         }
     return [{**_summary(storms[h.sid]), "min_distance_km": round(h.min_km, 1)} for h in hits]
+
+
+def storm_summary(sid: str) -> dict | None:
+    with db.SessionLocal() as session:
+        storm = session.get(HistoricalStorm, sid)
+    return _summary(storm) if storm else None

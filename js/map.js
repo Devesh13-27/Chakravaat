@@ -443,6 +443,21 @@ function getCycloneColor(storm = {}) {
 // Premium cyclone SVG
 // ---------------------------------------------------------
 
+// Wind in km/h from whatever field the storm carries. Unknown ('—', missing) -> 0 so radii stay finite;
+// a NaN radius makes the Maps library throw on every repaint.
+function stormWind(storm = {}) {
+
+  const value = Number(
+    storm.windSpeed ||
+    storm.wind ||
+    storm.maxWind ||
+    0
+  );
+
+  return Number.isFinite(value) ? value : 0;
+}
+
+
 function createCycloneIcon(storm = {}) {
 
   const color = getCycloneColor(storm);
@@ -695,12 +710,7 @@ function createIntensityRings(
   storm = {}
 ) {
 
-  const wind = Number(
-    storm.windSpeed ||
-    storm.wind ||
-    storm.maxWind ||
-    0
-  );
+  const wind = stormWind(storm);
 
   const color =
     getCycloneColor(storm);
@@ -851,7 +861,7 @@ function createCloudTopOverlay(position, storm = {}) {
 
   const color = "#9B59B6";
 
-  const wind = Number(storm.windSpeed || storm.wind || storm.maxWind || 0);
+  const wind = stormWind(storm);
   const radius = Math.max(45000, wind * 550);
 
   const circle = new google.maps.Circle({
@@ -1421,7 +1431,7 @@ function createPressureContours(position, storm = {}) {
   // Main Renderer
   // -------------------------------------------------------
 
-  async function renderMap(storms = []) {
+  async function renderMap(storms = [], { recenter = true } = {}) {
 
     try {
 
@@ -1437,17 +1447,20 @@ function createPressureContours(position, storm = {}) {
         renderTrack(storm);
       });
 
-      mapInstance.setCenter(
-        DEFAULT_CENTER
-      );
+      if (recenter) {
 
-      mapInstance.setZoom(
-        DEFAULT_ZOOM
-      );
+        mapInstance.setCenter(
+          DEFAULT_CENTER
+        );
 
-      updateMapAttr(
-        "GOOGLE MAPS • NORTH INDIAN OCEAN"
-      );
+        mapInstance.setZoom(
+          DEFAULT_ZOOM
+        );
+
+        updateMapAttr(
+          "GOOGLE MAPS • NORTH INDIAN OCEAN"
+        );
+      }
 
     } catch (error) {
 
@@ -1497,6 +1510,23 @@ function createPressureContours(position, storm = {}) {
   // -------------------------------------------------------
   // Detection Overlay
   // -------------------------------------------------------
+
+  // Detection confidence as a 0-100 percentage, or null when the storm has none.
+  function detectionPercent(storm) {
+
+    const raw =
+      storm.detection?.confidence ??
+      storm.confidence ??
+      storm.detectionConfidence;
+
+    const value = Number(raw);
+
+    if (raw === null || raw === undefined || !Number.isFinite(value)) {
+      return null;
+    }
+
+    return value <= 1 ? value * 100 : value;
+  }
 
   function updateDetectionOverlay(
     storm
@@ -1550,15 +1580,12 @@ function createPressureContours(position, storm = {}) {
 
     if (confidence) {
 
-      const value =
-        Number(
-          storm.confidence ??
-          storm.detectionConfidence ??
-          0
-        );
+      const value = detectionPercent(storm);
 
       confidence.textContent =
-        `${Math.round(value * 100)}%`;
+        value === null
+          ? "—"
+          : `${Math.round(value)}%`;
     }
 
     if (center) {
@@ -1586,25 +1613,21 @@ function createPressureContours(position, storm = {}) {
     if (model) {
 
       model.textContent =
+        storm.detection?.model ||
         storm.model ||
         "CycloneAI";
     }
 
     if (bar) {
 
-      const value =
-        Number(
-          storm.confidence ??
-          storm.detectionConfidence ??
-          0
-        );
+      const value = detectionPercent(storm);
 
       bar.style.width =
         `${Math.max(
           0,
           Math.min(
             100,
-            value * 100
+            value ?? 0
           )
         )}%`;
     }
@@ -1717,6 +1740,71 @@ function createPressureContours(position, storm = {}) {
   }
 
   // -------------------------------------------------------
+  // Replay helpers
+  // -------------------------------------------------------
+
+  // Dashed path of what actually happened after the forecast start.
+  function renderActualTrack(points) {
+
+    const path =
+      (points || [])
+        .filter(validPoint)
+        .map(toLatLng);
+
+    if (path.length < 2 || !mapInstance) return;
+
+    const line =
+      new google.maps.Polyline({
+
+        map: mapInstance,
+
+        path,
+
+        geodesic: true,
+
+        clickable: false,
+
+        strokeOpacity: 0,
+
+        icons: [{
+          icon: {
+            path: "M 0,-1 0,1",
+            strokeOpacity: 0.85,
+            strokeColor: "#E2E8F0",
+            scale: 2
+          },
+          offset: "0",
+          repeat: "10px"
+        }],
+
+        zIndex: 40
+      });
+
+    addOverlay(
+      "historical",
+      line
+    );
+  }
+
+  function fitTo(points) {
+
+    const valid =
+      (points || []).filter(validPoint);
+
+    if (!valid.length || !mapInstance) return;
+
+    const bounds =
+      new google.maps.LatLngBounds();
+
+    valid.forEach(p => bounds.extend(toLatLng(p)));
+
+    mapInstance.fitBounds(
+      bounds,
+      { top: 60, right: 40, bottom: 90, left: 40 }
+    );
+  }
+
+  // -------------------------------------------------------
   // Zoom Controls
   // -------------------------------------------------------
 
@@ -1796,7 +1884,11 @@ function createPressureContours(position, storm = {}) {
 
     resetZoom,
 
-    getZoom
+    getZoom,
+
+    renderActualTrack,
+
+    fitTo
 
   };
 

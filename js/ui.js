@@ -46,6 +46,14 @@ const UI = (() => {
     }
   }
 
+  /* Show a fixed message in the badge (e.g. while replaying history), in the calm style. */
+  function setAlertBadge(text) {
+    const badge = $('alertBadge');
+    if (!badge) return;
+    badge.textContent = text;
+    badge.classList.add('calm');
+  }
+
   /* ══════════════════════════════════════════════════════════
      LEFT PANEL
      ══════════════════════════════════════════════════════════ */
@@ -193,7 +201,8 @@ const UI = (() => {
     const r     = 34;
     const circ  = 2 * Math.PI * r;
     const arc   = circ * 0.77;          // 277° arc
-    const filled = arc * Math.min(1, value / maxValue);
+    const known = Number.isFinite(Number(value));
+    const filled = known ? arc * Math.min(1, Number(value) / maxValue) : 0;
 
     wrapper.innerHTML = `
       <svg width="88" height="88" viewBox="0 0 88 88">
@@ -211,7 +220,7 @@ const UI = (() => {
           transform="rotate(-220 44 44)"/>
         <text x="44" y="41" text-anchor="middle"
           fill="var(--navy)" font-family="Fira Code, monospace"
-          font-size="15" font-weight="700">${value}</text>
+          font-size="15" font-weight="700">${known ? value : '—'}</text>
         <text x="44" y="53" text-anchor="middle"
           fill="var(--text-muted)" font-family="DM Sans, sans-serif"
           font-size="8.5">km/h</text>
@@ -379,6 +388,7 @@ const UI = (() => {
   return {
     toast,
     updateAlertBadge,
+    setAlertBadge,
     renderStormCards,
     renderSatFeeds,
     renderLayerToggles,

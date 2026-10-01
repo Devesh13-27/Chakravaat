@@ -51,3 +51,12 @@ class Ridge:
     def predict(self, x: np.ndarray) -> np.ndarray:
         flat = x.reshape(len(x), -1)
         return np.hstack([(flat - self.mu) / self.sd, np.ones((len(flat), 1))]) @ self.w
+
+    def state(self) -> dict:
+        return {"lam": self.lam, "mu": self.mu, "sd": self.sd, "w": self.w}
+
+    @classmethod
+    def from_state(cls, st: dict) -> "Ridge":
+        r = cls(st["lam"])
+        r.mu, r.sd, r.w = st["mu"], st["sd"], st["w"]
+        return r

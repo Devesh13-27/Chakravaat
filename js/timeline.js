@@ -65,6 +65,14 @@ const Timeline = (() => {
     _storeRef('dates', dates);
   }
 
+  /* Replace the date range (e.g. when switching to a replayed storm) without re-binding handlers. */
+  function setRange(dates, tickLabels, progress = 0) {
+    _refs.dates = dates;
+    const labelsEl = $('tlLabels');
+    if (labelsEl) labelsEl.innerHTML = tickLabels.map(l => `<span>${l}</span>`).join('');
+    setProgress(progress, dates);
+  }
+
   function scrubTo(e, track) {
     const rect = track.getBoundingClientRect();
     setProgress(Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)));
@@ -138,5 +146,5 @@ const Timeline = (() => {
   function getSpeed()       { return SPEEDS[_speedIdx]; }
   function isPlaying()      { return _playing; }
 
-  return { init, setProgress, togglePlay, pause, step, cycleSpeed, getProgress, getSpeed, isPlaying };
+  return { init, setRange, setProgress, togglePlay, pause, step, cycleSpeed, getProgress, getSpeed, isPlaying };
 })();

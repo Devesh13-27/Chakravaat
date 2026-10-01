@@ -28,7 +28,7 @@ REGION = {"lat": (-5.0, 35.0), "lon": (40.0, 110.0)}
 
 N_FEATURES = 10
 
-FIXES_SQL = text(
+FIXES_SQL_TEMPLATE = (
     """
     SELECT p.sid, s.season, p.observed_at,
            ST_Y(p.geom) AS lat, ST_X(p.geom) AS lon,
@@ -39,6 +39,7 @@ FIXES_SQL = text(
     WHERE p.track_type = 'main'
       AND date_part('minute', p.observed_at) = 0
       AND date_part('hour', p.observed_at)::int % :step = 0
+      {sid_filter}
     ORDER BY p.sid, p.observed_at
     """
 )
@@ -76,11 +77,16 @@ class Samples:
         return Samples(**{k: getattr(self, k)[mask] for k in self.__dataclass_fields__})
 
 
-def load_fixes() -> dict:
+def load_fixes(sid: str | None = None) -> dict:
+    """6-hourly main-track fixes from PostGIS, for every storm or just one."""
     if db.engine is None:
         raise SystemExit("DATABASE_URL is not set (see backend/.env.example)")
+    query = text(FIXES_SQL_TEMPLATE.format(sid_filter="AND p.sid = :sid" if sid else ""))
+    params = {"official": list(OFFICIAL_SOURCES), "step": STEP_H}
+    if sid:
+        params["sid"] = sid
     with db.engine.connect() as conn:
-        rows = conn.execute(FIXES_SQL, {"official": list(OFFICIAL_SOURCES), "step": STEP_H}).all()
+        rows = conn.execute(query, params).all()
 
     storms: dict[str, dict] = {}
     for sid, season, t, lat, lon, wind, pres in rows:
@@ -131,7 +137,7 @@ def _features(lat, lon, wind, pres, t_hours):
     )
 
 
-def build_samples(storms: dict | None = None) -> Samples:
+def build_samples(storms: dict | None = None, require_targets: bool = True) -> Samples:
     storms = storms if storms is not None else load_fixes()
     cols = {k: [] for k in ("x", "win_lat", "win_lon", "win_wind", "tgt_lat", "tgt_lon", "tgt_wind", "sid", "season", "time")}
     h, max_lead = HIST_STEPS, max(LEADS)
@@ -152,7 +158,7 @@ def build_samples(storms: dict | None = None) -> Samples:
                 continue
             targets = [i + s for s in LEADS]
             tl = np.array([g["lat"][j] if j < n else np.nan for j in targets])
-            if np.isnan(tl).all():  # nothing to learn from
+            if require_targets and np.isnan(tl).all():  # nothing to learn from
                 continue
             t_hours = t0 + np.arange(i - h + 1, i + 1) * np.timedelta64(STEP_H, "h")
             cols["x"].append(_features(g["lat"][win], g["lon"][win], g["wind"][win], g["pres"][win], t_hours))
@@ -196,3 +202,11 @@ def track_targets_km(s: Samples) -> np.ndarray:
 def wind_targets(s: Samples) -> np.ndarray:
     """(N, L) wind change in kt relative to the last fix; NaN unless both ends are known."""
     return s.tgt_wind - s.wind0[:, None]
+
+
+def split_of_season(season: int) -> str:
+    """Which role a storm's season played: 'train', 'val' (used for tuning/calibration), 'test' or 'outside'."""
+    for name, (lo, hi) in (("train", TRAIN_SEASONS), ("val", VAL_SEASONS), ("test", TEST_SEASONS)):
+        if lo <= season <= hi:
+            return name
+    return "outside"

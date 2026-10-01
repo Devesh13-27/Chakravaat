@@ -14,9 +14,9 @@ const Api = (() => {
     || 'http://127.0.0.1:8000/api/v1';
   const TIMEOUT_MS = 3000;
 
-  async function get(path) {
+  async function get(path, timeoutMs = TIMEOUT_MS) {
     const ctrl  = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const res = await fetch(`${BASE}${path}`, { signal: ctrl.signal });
       if (!res.ok) throw new Error(`${path} → HTTP ${res.status}`);
@@ -60,5 +60,5 @@ const Api = (() => {
     }
   }
 
-  return { load, BASE };
+  return { load, get, BASE };
 })();

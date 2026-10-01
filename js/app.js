@@ -89,7 +89,7 @@ const App = (() => {
     analysis: 'xai'
   };
 
-  function onNavChange(view) {
+  async function onNavChange(view) {
     const labels = {
       live:     'Live Monitor active',
       predict:  'Prediction view',
@@ -100,6 +100,29 @@ const App = (() => {
 
     const tab = TAB_FOR_VIEW[view];
     if (tab) UI.activateTab(tab);
+
+    if (view === 'replay') {
+      const ok = await Replay.enter();
+      if (!ok) setActiveNavPill('live');   /* backend unavailable: stay on the live view */
+    } else if (Replay.isActive()) {
+      Replay.exit();
+      restoreLive();
+    }
+  }
+
+  function setActiveNavPill(view) {
+    document.querySelectorAll('.nav-pill').forEach(p => p.classList.toggle('active', p.dataset.view === view));
+  }
+
+  /* Back from History Replay: redraw the live systems exactly as at startup. */
+  function restoreLive() {
+    Timeline.setRange(window.TIMELINE_DATES, window.TIMELINE_TICK_LABELS, 0.65);
+    ChakravaatMap.renderMap(window.STORM_DATA).then(() => {
+      (window.MAP_LAYERS || []).forEach(l => ChakravaatMap.setLayerVisible(l.id, l.on));
+    });
+    const defaultFeed = (window.SAT_FEEDS || [])[_activeSatIdx];
+    if (defaultFeed) ChakravaatMap.updateMapAttr(`2024-06-14 09:40 UTC · ${defaultFeed.name} · ${defaultFeed.freq}`);
+    selectStorm(_activeStormId);
   }
 
   /* ── Map zoom ────────────────────────────────────────────── */
@@ -109,6 +132,7 @@ const App = (() => {
 
   /* ── Timeline tick ───────────────────────────────────────── */
   function onTimelineTick(progress, dateLabel) {
+    if (Replay.isActive()) Replay.onTick(progress);
     /* 
        BACKEND HOOK: fetch historical snapshot here.
        e.g.:

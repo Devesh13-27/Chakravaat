@@ -94,6 +94,26 @@ Requirements: Node.js, Python 3.11+ (3.12 used here), Git.
 
    To use a different install folder, set the PG_HOME environment variable.
 
+4) Forecast model (optional; needs step 3 including db:ingest)
+
+   a. Install the ML packages (PyTorch CPU build, ~200 MB):
+
+        cd backend
+        .venv\Scripts\python.exe -m pip install -r requirements-ml.txt
+        cd ..
+
+   b. Train it (a few minutes on a normal CPU). Writes backend/artifacts/:
+
+        npm run ml:train
+
+      Prints a full evaluation (see backend/artifacts/report.txt): accuracy on seasons the
+      model never saw, compared with simple baselines, with calibrated error radii.
+      "npm run ml:train:quick" is a fast smoke test that saves nothing.
+      The weights file (gru_ensemble.pt) is git-ignored, so each machine trains its own.
+
+   Without this step everything else works; the forecast endpoints and History Replay
+   simply report that the model is unavailable.
+
 
 -------------------------------------------------------------------
 RUNNING THE PARTS SEPARATELY (three terminals)
@@ -131,6 +151,20 @@ USEFUL URLS
     /api/v1/history/storms/near?lat=19.07&lon=72.88&radius_km=200
                                                                 storms that passed near a point
     /api/v1/history/storms/2023156N10067                        one storm with its full track
+  Forecast model (needs step 4):
+    /api/v1/forecast/model                                      what it is, test accuracy, error radii
+    /api/v1/history/storms/2023156N10067/hindcast               forecasts from every time of a past storm,
+                                                                next to what actually happened
+    POST /api/v1/forecast                                       forecast from the latest 6-hourly fixes
+                                                                (see /docs for the request format)
+  The hindcast marks each storm out_of_sample true only for 2019+; earlier seasons were used for
+  training or tuning, so their results look better than they should.
+  For POST /forecast, include wind_kt and pressure_hpa whenever known: leaving pressure out
+  changes the forecast materially.
+
+  In the app: click "History Replay", pick a storm, then play or drag the timeline. The map shows
+  observed track (solid), what really happened next (dashed), the model forecast and its 67%
+  error cone. Live Monitor still shows demo data until a live feed is connected.
   Units follow the source: wind in knots, pressure in hPa, times in UTC.
   Each wind/pressure value carries its source (wmo / newdelhi / usa); IMD uses
   3-minute winds and JTWC ("usa") 1-minute winds, so they are not interchangeable.

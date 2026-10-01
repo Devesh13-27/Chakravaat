@@ -1,3 +1,6 @@
+import logging
+import threading
+from contextlib import asynccontextmanager
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
@@ -7,17 +10,42 @@ from . import history, repo
 from .schemas import (
     DataSource,
     Environment,
+    ForecastFrame,
+    ForecastRequest,
     HistoricalStormDetail,
+    HindcastResponse,
     HistoricalStormPage,
     HistoryStats,
     MapLayer,
+    ModelCard,
     NearbyStorm,
     SatFeed,
     Storm,
     Timeline,
 )
 
+log = logging.getLogger("uvicorn.error")
+
+
+def _warm_forecast_model():
+    """Import PyTorch and load the model off the request path so the first forecast isn't slow."""
+    try:
+        from . import forecast_service
+
+        forecast_service.get_forecaster()
+        log.info("Forecast model loaded.")
+    except Exception as exc:  # optional feature: the rest of the API must still start
+        log.info("Forecast model not loaded (%s); /forecast endpoints will return 503.", exc)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    threading.Thread(target=_warm_forecast_model, daemon=True).start()
+    yield
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Chakravaat API",
     description="Tropical cyclone intelligence: active storms, forecasts, environment and feeds.",
     version="0.1.0",
@@ -27,7 +55,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -147,3 +175,58 @@ def history_storm(sid: str, main_only: bool = Query(True, description="Only 'mai
     if storm is None:
         raise HTTPException(status_code=404, detail=f"Historical storm '{sid}' not found")
     return storm
+
+
+# ── Forecast model (blend of GRU ensemble + ridge) ───────────────────────────
+
+
+def _forecast_service():
+    """Imported lazily so the rest of the API still runs on a machine without PyTorch."""
+    try:
+        from . import forecast_service
+    except ImportError as exc:
+        raise HTTPException(
+            status_code=503, detail="The forecast model needs PyTorch: pip install -r backend/requirements-ml.txt"
+        ) from exc
+    return forecast_service
+
+
+@app.get(f"{API}/forecast/model", response_model=ModelCard, tags=["forecast"])
+def forecast_model():
+    """What the deployed model is, how it scored on unseen seasons, and its calibrated error radii."""
+    svc = _forecast_service()
+    try:
+        return svc.model_card()
+    except svc.ModelUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.post(f"{API}/forecast", response_model=ForecastFrame, tags=["forecast"])
+def forecast(body: ForecastRequest):
+    """Forecast +6/+12/+24/+48 h from the latest consecutive 6-hourly fixes (newest = start time)."""
+    svc = _forecast_service()
+    try:
+        return svc.forecast_from_fixes([f.model_dump() for f in body.fixes])
+    except svc.ModelUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get(f"{API}/history/storms/{{sid}}/hindcast", response_model=HindcastResponse, tags=["forecast"])
+def history_hindcast(sid: str):
+    """Replay a past storm: the model's forecast from every valid time, next to what actually happened.
+
+    `out_of_sample` is true only for 2019+ storms; earlier storms were used for training or tuning."""
+    _require_db()
+    summary = history.storm_summary(sid)
+    if summary is None:
+        raise HTTPException(status_code=404, detail=f"Historical storm '{sid}' not found")
+    svc = _forecast_service()
+    try:
+        result = svc.hindcast(sid, summary)
+    except svc.ModelUnavailable as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"No 6-hourly fixes for storm '{sid}'")
+    return result

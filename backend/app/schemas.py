@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class _Base(BaseModel):
@@ -194,3 +194,86 @@ class HistoryStats(BaseModel):
     storms_with_intensity: int
     latest_fix: datetime | None
     source: str
+
+
+# ── Forecast model ───────────────────────────────────────────────────────────
+
+
+class ForecastLead(BaseModel):
+    lead_h: int
+    lat: float
+    lon: float
+    wind_kt: float | None = None  # null when the current wind is unknown
+    track_radius_km_67: float
+    track_radius_km_90: float
+    wind_radius_kt_67: float
+    wind_radius_kt_90: float
+
+
+class ActualLead(BaseModel):
+    lead_h: int
+    lat: float
+    lon: float
+    wind_kt: float | None = None
+
+
+class ForecastFrame(BaseModel):
+    init_time: datetime
+    lat: float
+    lon: float
+    wind_kt: float | None = None
+    forecast: list[ForecastLead]
+    actual: list[ActualLead | None] | None = None  # present for hindcasts
+    track_error_km: list[float | None] | None = None
+
+
+class ObservedFix(BaseModel):
+    time: datetime
+    lat: float
+    lon: float
+    wind_kt: float | None = None
+
+
+class HindcastResponse(BaseModel):
+    sid: str
+    name: str
+    season: int
+    data_split: str  # train | val | test | outside
+    out_of_sample: bool  # true only for test seasons (never seen in training or tuning)
+    model: str
+    observed: list[ObservedFix]
+    frames: list[ForecastFrame]
+
+
+class FixIn(BaseModel):
+    time: datetime  # timezone-aware, UTC recommended
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=360)
+    wind_kt: float | None = Field(None, ge=0, le=250, description="Official-agency (IMD/WMO) sustained wind")
+    pressure_hpa: float | None = Field(None, ge=800, le=1100)
+
+    @field_validator("time")
+    @classmethod
+    def _tz_aware(cls, v: datetime) -> datetime:
+        if v.tzinfo is None:
+            raise ValueError("time must include a timezone, e.g. 2026-09-24T00:00:00Z")
+        return v
+
+
+class ForecastRequest(BaseModel):
+    fixes: list[FixIn] = Field(min_length=6, max_length=48,
+                               description="Consecutive 6-hourly fixes, oldest first; the newest is the forecast start. "
+                                           "Include wind_kt and pressure_hpa (official agency) whenever known: "
+                                           "omitting pressure changes the forecast materially.")
+
+
+class ModelCard(BaseModel):
+    model: str
+    trained_at: str
+    source: str
+    splits: dict
+    leads_h: list[int]
+    test_track_error_km: list[float]
+    test_wind_error_kt: list[float]
+    cone: dict
+    caveats: list[str]
