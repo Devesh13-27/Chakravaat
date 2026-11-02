@@ -92,7 +92,9 @@ Requirements: Node.js, Python 3.11+ (3.12 used here), Git.
       git-ignored), then loads ~1,900 storms / ~63,000 track points. Safe to re-run:
       it replaces the archive each time. Run it again whenever you want newer data.
 
-   To use a different install folder, set the PG_HOME environment variable.
+   The scripts also detect a standard Windows installation such as
+   `C:\Program Files\PostgreSQL\18`. To use a different install folder, set the
+   `PG_HOME` environment variable.
 
 4) Forecast model (optional; needs step 3 including db:ingest)
 

@@ -38,7 +38,7 @@ FIXES_SQL_TEMPLATE = (
            CASE WHEN p.pressure_source = ANY(:official) THEN p.pressure_hpa END AS pres
     FROM historical_track_points p
     JOIN historical_storms s USING (sid)
-    WHERE p.track_type = 'main'
+    WHERE p.track_type IN ('main', 'PROVISIONAL', 'US-PROVISIONAL')
       AND date_part('minute', p.observed_at) = 0
       AND date_part('hour', p.observed_at)::int % :step = 0
       {sid_filter}

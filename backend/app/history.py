@@ -8,6 +8,8 @@ from . import db
 from .ingest.ibtracs import IMD_ORDER
 from .models import HistoricalStorm, HistoricalTrackPoint
 
+PRIMARY_TRACK_TYPES = ("main", "PROVISIONAL", "US-PROVISIONAL")
+
 
 def _summary(s: HistoricalStorm) -> dict:
     return {
@@ -96,7 +98,7 @@ def storm_detail(sid: str, main_only: bool) -> dict | None:
             func.ST_X(HistoricalTrackPoint.geom),
         ).where(HistoricalTrackPoint.sid == sid)
         if main_only:
-            query = query.where(HistoricalTrackPoint.track_type == "main")
+            query = query.where(HistoricalTrackPoint.track_type.in_(PRIMARY_TRACK_TYPES))
         rows = session.execute(query.order_by(HistoricalTrackPoint.observed_at)).all()
 
     points = [
@@ -127,7 +129,7 @@ NEAR_SQL = text(
     hits AS (
       SELECT p.sid, min(ST_Distance(p.geom::geography, t.g::geography)) / 1000.0 AS min_km
       FROM historical_track_points p, target t
-      WHERE p.track_type = 'main'
+      WHERE p.track_type IN ('main', 'PROVISIONAL', 'US-PROVISIONAL')
         AND p.geom && ST_Expand(t.g, :expand_deg)                           -- uses the GiST index
         AND ST_DWithin(p.geom::geography, t.g::geography, :radius_m)        -- exact distance
       GROUP BY p.sid
